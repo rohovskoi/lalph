@@ -1,23 +1,21 @@
-import { Effect, FileSystem, Layer } from "effect"
+import { Effect, FileSystem, Layer, ServiceMap } from "effect"
 import { Linear } from "./Linear.ts"
 import { PrdIssue } from "./Prd.ts"
 
-export const PromptGen = Layer.effectDiscard(
-  Effect.gen(function* () {
-    const linear = yield* Linear
-    const fs = yield* FileSystem.FileSystem
+export class PromptGen extends ServiceMap.Service<PromptGen>()(
+  "lalph/PromptGen",
+  {
+    make: Effect.gen(function* () {
+      const linear = yield* Linear
+      const fs = yield* FileSystem.FileSystem
 
-    yield* Effect.scoped(
-      fs.open(".lalph/progress.md", {
-        flag: "a+",
-      }),
-    )
+      yield* Effect.scoped(
+        fs.open(".lalph/progress.md", {
+          flag: "a+",
+        }),
+      )
 
-    yield* fs.writeFileString(
-      ".lalph/prompt.md",
-      `@prd.json @progress.md
-
-# Instructions
+      const prompt = `# Instructions
 
 1. Decide which single task to work on next from the prd.json file. This should
    be the task YOU decide as the most important to work on next, not just the
@@ -53,7 +51,11 @@ To add a new task, append a new item to the prd.json file with the id set to
 \`\`\`json
 ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
 \`\`\`
-`,
-    )
-  }),
-).pipe(Layer.provide(Linear.layer))
+`
+
+      return { prompt } as const
+    }),
+  },
+) {
+  static layer = Layer.effect(this, this.make).pipe(Layer.provide(Linear.layer))
+}
