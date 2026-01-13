@@ -109,6 +109,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           updatedIssues.set(issue.id, entry)
         }
         entry.count++
+        console.log("updates", updatedIssues)
       }
     }).pipe(Effect.uninterruptible, Effect.makeSemaphoreUnsafe(1).withPermit)
 
@@ -117,10 +118,12 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
         updatedIssues.values(),
         ({ issue, count, originalStateId }) => {
           if (count > 1) return Effect.void
-          return linear.use((c) =>
-            c.updateIssue(issue.id, {
-              stateId: originalStateId,
-            }),
+          return Effect.asVoid(
+            linear.use((c) =>
+              c.updateIssue(issue.id, {
+                stateId: originalStateId,
+              }),
+            ),
           )
         },
         { concurrency: "unbounded" },
