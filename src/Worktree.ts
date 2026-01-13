@@ -21,6 +21,11 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
     yield* fs.makeDirectory(pathService.join(directory, ".lalph"), {
       recursive: true,
     })
+    yield* Effect.scoped(
+      fs.open(pathService.join(directory, "PROGRESS.md"), {
+        flag: "a+",
+      }),
+    )
 
     yield* Effect.forEach(
       [

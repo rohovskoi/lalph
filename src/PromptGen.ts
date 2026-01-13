@@ -27,6 +27,7 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
 6. Create or update the pull request with your changes once the task is complete. The title of
    the PR should include the task id. The PR description should include a
    summary of the changes made.
+   - None of the files in the \`.lalph\` directory should be committed.
 7. Update the prd.json file to reflect any changes in task states.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes.
