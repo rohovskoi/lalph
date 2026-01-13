@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command, Flag } from "effect/unstable/cli"
-import { Effect, Layer, Option } from "effect"
+import { DateTime, Effect, Layer, Option } from "effect"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { CurrentProject, labelSelect, Linear } from "./Linear.ts"
 import { layerKvs } from "./Kvs.ts"
@@ -68,6 +68,8 @@ const root = Command.make("lalph", { iterations, concurrency }).pipe(
       )
 
       let iteration = 0
+      let lastStartedAt = DateTime.makeUnsafe(0)
+      let inProgress = 0
 
       while (true) {
         yield* semaphore.take(1)
@@ -76,6 +78,20 @@ const root = Command.make("lalph", { iterations, concurrency }).pipe(
         }
 
         const currentIteration = iteration
+
+        if (inProgress > 0) {
+          // add delay to try keep task list in sync
+          const nextEarliestStart = lastStartedAt.pipe(
+            DateTime.add({ seconds: 30 }),
+          )
+          const diff = DateTime.distance(yield* DateTime.now, nextEarliestStart)
+          if (diff > 0) {
+            yield* Effect.sleep(diff)
+          }
+        }
+
+        lastStartedAt = yield* DateTime.now
+        inProgress++
 
         yield* run.pipe(
           Effect.catchTag("NoMoreWork", (e) => {
@@ -93,7 +109,12 @@ const root = Command.make("lalph", { iterations, concurrency }).pipe(
           Effect.annotateLogs({
             iteration: currentIteration,
           }),
-          Effect.ensuring(semaphore.release(1)),
+          Effect.ensuring(
+            Effect.suspend(() => {
+              inProgress--
+              return semaphore.release(1)
+            }),
+          ),
           Effect.forkChild,
         )
         iteration++

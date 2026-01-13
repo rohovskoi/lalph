@@ -31,6 +31,9 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
           extendEnv: true,
           shell: process.env.SHELL ?? true,
         })`devenv allow`,
+        ChildProcess.make({
+          cwd: directory,
+        })`git submodule update --init --recursive`,
       ],
       execIgnore,
       { concurrency: "unbounded" },
