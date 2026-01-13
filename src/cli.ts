@@ -34,7 +34,7 @@ const selectLabel = Command.make("select-label").pipe(
           onSome: (l) => l.name,
         })}`,
       )
-    }, Effect.provide(Linear.layer)),
+    }),
   ),
 )
 
@@ -64,6 +64,10 @@ const root = Command.make("lalph", { iterations }).pipe(
 Command.run(root, {
   version: "0.1.0",
 }).pipe(
-  Effect.provide(Settings.layer.pipe(Layer.provideMerge(NodeServices.layer))),
+  Effect.provide(
+    Layer.mergeAll(Settings.layer, Linear.layer).pipe(
+      Layer.provideMerge(NodeServices.layer),
+    ),
+  ),
   NodeRuntime.runMain,
 )

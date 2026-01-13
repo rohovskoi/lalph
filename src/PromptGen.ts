@@ -1,4 +1,4 @@
-import { Effect, FileSystem, Layer, ServiceMap } from "effect"
+import { Effect, Layer, ServiceMap } from "effect"
 import { Linear } from "./Linear.ts"
 import { PrdIssue } from "./Prd.ts"
 
@@ -7,13 +7,6 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
   {
     make: Effect.gen(function* () {
       const linear = yield* Linear
-      const fs = yield* FileSystem.FileSystem
-
-      yield* Effect.scoped(
-        fs.open("PROGRESS.md", {
-          flag: "a+",
-        }),
-      )
 
       const prompt = `# Instructions
 

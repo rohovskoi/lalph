@@ -4,17 +4,21 @@ import {
   FileSystem,
   Layer,
   Option,
+  Path,
   Schema,
   ServiceMap,
   Stream,
   SubscriptionRef,
 } from "effect"
 import { CurrentProject, Linear } from "./Linear.ts"
-import { selectedLabelId, selectedTeamId, Settings } from "./Settings.ts"
+import { selectedLabelId, selectedTeamId } from "./Settings.ts"
 import type { Issue } from "@linear/sdk"
+import { Worktree } from "./Worktree.ts"
 
 export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
   make: Effect.gen(function* () {
+    const worktree = yield* Worktree
+    const pathService = yield* Path.Path
     const fs = yield* FileSystem.FileSystem
     const linear = yield* Linear
     const project = yield* CurrentProject
@@ -46,7 +50,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
 
     const current = yield* SubscriptionRef.make(initial)
 
-    const prdFile = `.lalph/prd.json`
+    const prdFile = pathService.join(worktree.directory, `.lalph/prd.json`)
 
     yield* fs.writeFileString(prdFile, initial.toJson())
 
@@ -97,11 +101,11 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       Effect.forkScoped,
     )
 
-    return { current } as const
+    return { current, path: prdFile } as const
   }),
 }) {
   static layer = Layer.effect(this, this.make).pipe(
-    Layer.provide([Linear.layer, Settings.layer, CurrentProject.layer]),
+    Layer.provide([CurrentProject.layer, Worktree.layer]),
   )
 }
 

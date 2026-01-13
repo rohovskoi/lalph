@@ -5,16 +5,23 @@ import { ChildProcess } from "effect/unstable/process"
 import { Prompt } from "effect/unstable/cli"
 import { allCliAgents } from "./domain/CliAgent.ts"
 import { selectedCliAgentId } from "./Settings.ts"
+import { Worktree } from "./Worktree.ts"
 
 export const run = Effect.gen(function* () {
+  const worktree = yield* Worktree
   const promptGen = yield* PromptGen
   const cliAgent = yield* getOrSelectCliAgent
+
+  // @effect-diagnostics-next-line missingReturnYieldStar:off
+  yield* Effect.never
+
   const cliCommand = cliAgent.command({
     prompt: promptGen.prompt,
     prdFilePath: ".lalph/prd.json",
     progressFilePath: "PROGRESS.md",
   })
   const command = ChildProcess.make(cliCommand[0]!, cliCommand.slice(1), {
+    cwd: worktree.directory,
     extendEnv: true,
     stdout: "inherit",
     stderr: "inherit",
@@ -25,7 +32,10 @@ export const run = Effect.gen(function* () {
   const exitCode = yield* agent.exitCode
 
   yield* Effect.log(`Agent exited with code: ${exitCode}`)
-}).pipe(Effect.scoped, Effect.provide([PromptGen.layer, Prd.layer]))
+}).pipe(
+  Effect.scoped,
+  Effect.provide([PromptGen.layer, Prd.layer, Worktree.layer]),
+)
 
 export const selectCliAgent = Effect.gen(function* () {
   const agent = yield* Prompt.select({
