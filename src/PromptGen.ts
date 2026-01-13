@@ -1,6 +1,6 @@
 import { Effect, Layer, ServiceMap } from "effect"
 import { Linear } from "./Linear.ts"
-import { PrdIssue } from "./Prd.ts"
+import { PrdIssue } from "./domain/PrdIssue.ts"
 
 export class PromptGen extends ServiceMap.Service<PromptGen>()(
   "lalph/PromptGen",
