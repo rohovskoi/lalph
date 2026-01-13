@@ -29,25 +29,14 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
       }),
     )
 
-    yield* Effect.forEach(
-      [
-        ChildProcess.make({
-          cwd: directory,
-          extendEnv: true,
-          shell: process.env.SHELL ?? true,
-        })`direnv allow`,
-        ChildProcess.make({
-          cwd: directory,
-          extendEnv: true,
-          shell: process.env.SHELL ?? true,
-        })`devenv allow`,
-        ChildProcess.make({
-          cwd: directory,
-        })`git submodule update --init --recursive`,
-      ],
-      execIgnore,
-      { concurrency: "unbounded" },
-    )
+    const setupPath = pathService.resolve(pathService.join(".lalph-setup.sh"))
+    if (yield* fs.exists(setupPath)) {
+      yield* ChildProcess.make({
+        cwd: directory,
+        extendEnv: true,
+        shell: process.env.SHELL ?? true,
+      })`${setupPath}`.pipe(ChildProcess.exitCode)
+    }
 
     return { directory } as const
   }),
