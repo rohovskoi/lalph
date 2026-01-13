@@ -8,7 +8,6 @@ import {
   Schema,
   ServiceMap,
   Stream,
-  SubscriptionRef,
 } from "effect"
 import { CurrentProject, Linear } from "./Linear.ts"
 import { selectedLabelId, selectedTeamId } from "./Settings.ts"
@@ -44,24 +43,39 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       )
       .pipe(Stream.runCollect)
 
-    const initial = yield* getIssues.pipe(Effect.map(PrdList.fromLinearIssues))
+    const prdFile = pathService.join(worktree.directory, `.lalph/prd.json`)
+
+    const updatePrdFile = Effect.gen(function* () {
+      const initial = yield* getIssues.pipe(
+        Effect.map(PrdList.fromLinearIssues),
+      )
+      yield* fs.writeFileString(prdFile, initial.toJson())
+      return initial
+    })
+
+    const initial = yield* updatePrdFile
     if (initial.issues.size === 0) {
       return yield* new NoMoreWork({})
     }
 
-    const current = yield* SubscriptionRef.make(initial)
-
-    const prdFile = pathService.join(worktree.directory, `.lalph/prd.json`)
-
-    yield* fs.writeFileString(prdFile, initial.toJson())
+    const updatedIssues = new Map<
+      string,
+      {
+        readonly issue: Issue
+        readonly originalStateId: string
+        count: number
+      }
+    >()
 
     const sync = Effect.gen(function* () {
       const json = yield* fs.readFileString(prdFile)
-      const currentValue = yield* SubscriptionRef.get(current)
+      const current = PrdList.fromLinearIssues(yield* getIssues)
       const updated = PrdList.fromJson(json)
+      let changes = 0
 
       for (const issue of updated) {
         if (issue.id === null) {
+          changes++
           // create new issue
           yield* linear.use((c) =>
             c.createIssue({
@@ -77,9 +91,11 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           )
           continue
         }
-        const existing = currentValue.issues.get(issue.id)
+        const existing = current.issues.get(issue.id)
         if (!existing || !existing.isChangedComparedTo(issue)) continue
-        const original = currentValue.orignals.get(issue.id)!
+        const original = current.orignals.get(issue.id)!
+
+        changes++
 
         // update existing issue
         yield* linear.use((c) =>
@@ -88,10 +104,38 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
             stateId: issue.stateId,
           }),
         )
-      }
-    })
 
-    yield* Effect.addFinalizer(() => Effect.ignore(sync))
+        let entry = updatedIssues.get(issue.id)
+        if (!entry) {
+          entry = {
+            issue: original,
+            originalStateId: original.stateId!,
+            count: 0,
+          }
+          updatedIssues.set(issue.id, entry)
+        }
+        entry.count++
+      }
+
+      if (changes > 0) {
+        yield* updatePrdFile
+      }
+    }).pipe(Effect.uninterruptible, Effect.makeSemaphoreUnsafe(1).withPermit)
+
+    yield* Effect.addFinalizer(() =>
+      Effect.forEach(
+        updatedIssues.values(),
+        ({ issue, count, originalStateId }) => {
+          if (count > 1) return Effect.void
+          return linear.use((c) =>
+            c.updateIssue(issue.id, {
+              stateId: originalStateId,
+            }),
+          )
+        },
+        { concurrency: "unbounded" },
+      ).pipe(Effect.ignore),
+    )
 
     yield* fs.watch(prdFile).pipe(
       Stream.buffer({
@@ -102,7 +146,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       Effect.forkScoped,
     )
 
-    return { current, path: prdFile } as const
+    return { path: prdFile } as const
   }),
 }) {
   static layer = Layer.effect(this, this.make).pipe(
