@@ -1,6 +1,8 @@
 # Information
 
 - The base branch for this repository is `master`.
+- The package manager used is `pnpm`. Run `pnpm install` to install
+  dependencies if `node_modules` is missing.
 
 # Development workflow
 

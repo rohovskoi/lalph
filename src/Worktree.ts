@@ -24,10 +24,12 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
         ChildProcess.make({
           cwd: directory,
           extendEnv: true,
+          shell: process.env.SHELL ?? true,
         })`direnv allow`,
         ChildProcess.make({
           cwd: directory,
           extendEnv: true,
+          shell: process.env.SHELL ?? true,
         })`devenv allow`,
       ],
       execIgnore,
