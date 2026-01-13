@@ -70,10 +70,11 @@ const root = Command.make("lalph", { iterations, concurrency }).pipe(
       let iteration = 0
       let lastStartedAt = DateTime.makeUnsafe(0)
       let inProgress = 0
+      let quit = false
 
       while (true) {
         yield* semaphore.take(1)
-        if (isFinite && iteration >= iterations) {
+        if (quit || (isFinite && iteration >= iterations)) {
           break
         }
 
@@ -111,6 +112,10 @@ const root = Command.make("lalph", { iterations, concurrency }).pipe(
             return Effect.log(
               "No more work to process, waiting 30 seconds...",
             ).pipe(Effect.andThen(Effect.sleep("30 seconds")))
+          }),
+          Effect.catchTag("QuitError", (_) => {
+            quit = true
+            return Effect.void
           }),
           Effect.annotateLogs({
             iteration: currentIteration,
