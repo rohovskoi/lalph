@@ -8,6 +8,26 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
     make: Effect.gen(function* () {
       const linear = yield* Linear
 
+      const prdNotes = `## prd.json format
+
+Each item in the prd.json file represents a task for the current project.
+
+The \`stateId\` field indicates the current state of the task. The possible states
+are:
+
+${Array.from(linear.states.values(), (state) => `- **${state.name}** (stateId: \`${state.id}\`)`).join("\n")}
+
+### Adding tasks
+
+To add a new task, append a new item to the prd.json file with the id set to
+\`null\`.
+
+### prd.json json schema
+
+\`\`\`json
+${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
+\`\`\``
+
       const prompt = `# Instructions
 
 1. Decide which single task to work on next from the prd.json file. This should
@@ -44,28 +64,42 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
 Remember, only work on a single task at a time, that you decide is the most
 important to work on next.
 
-## prd.json format
+${prdNotes}`
 
-Each item in the prd.json file represents a task for the current project.
+      const planPrompt = (idea: string) => `# Instructions
 
-The \`stateId\` field indicates the current state of the task. The possible states
-are:
+Users idea / request: ${idea}
 
-${Array.from(linear.states.values(), (state) => `- **${state.name}** (stateId: \`${state.id}\`)`).join("\n")}
+1. For the users idea / request above, break it down into multiple smaller tasks
+   that can be added to the prd.json file.
+2. Each task should have a id of \`null\`, a title, and a concise description of what
+   needs to be done.
+   - The tasks should be actionable and specific, avoiding vague or high-level
+     descriptions.
+   - The tasks should start in a backlog state (i.e., not started yet).
+3. Add the new tasks to the prd.json file.
+4. Add a brief outline of the plan to a "lalph-plan.md" file, that will help guide future
+   iterations.
+ 
+${prdNotes}`
 
-### Adding tasks
+      const planPromptFollowup = (feedback: string) => `# Instructions
 
-To add a new task, append a new item to the prd.json file with the id set to
-\`null\`.
+Users feedback on plan: ${feedback}
 
-### prd.json json schema
+1. Review the existing plan in the prd.json and lalph-plan.md files.
+2. Based on the user's feedback above, update the plan as needed by adding,
+   removing, or modifying tasks in the prd.json file.
+   - The tasks should be actionable and specific, avoiding vague or high-level
+     descriptions.
+   - The tasks should start in a backlog state (i.e., not started yet).
+3. Update the lalph-plan.md file to reflect any changes made to the plan.
+4. Ensure that the tasks remain actionable and specific, avoiding vague or
+   high-level descriptions.
 
-\`\`\`json
-${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
-\`\`\`
-`
+${prdNotes}`
 
-      return { prompt } as const
+      return { prompt, planPrompt, planPromptFollowup } as const
     }),
   },
 ) {

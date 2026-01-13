@@ -2,10 +2,8 @@ import { Array, Effect, Option, Path } from "effect"
 import { PromptGen } from "./PromptGen.ts"
 import { Prd } from "./Prd.ts"
 import { ChildProcess } from "effect/unstable/process"
-import { Prompt } from "effect/unstable/cli"
-import { allCliAgents } from "./domain/CliAgent.ts"
-import { selectedCliAgentId } from "./Settings.ts"
 import { Worktree } from "./Worktree.ts"
+import { getOrSelectCliAgent } from "./CliAgent.ts"
 
 export const run = Effect.fnUntraced(
   function* (options: { readonly autoMerge: boolean }) {
@@ -46,27 +44,3 @@ export const run = Effect.fnUntraced(
   Effect.scoped,
   Effect.provide([PromptGen.layer, Prd.layer, Worktree.layer]),
 )
-
-export const selectCliAgent = Effect.gen(function* () {
-  const agent = yield* Prompt.select({
-    message: "Select the CLI agent to use",
-    choices: allCliAgents.map((agent) => ({
-      title: agent.name,
-      value: agent,
-    })),
-  })
-  yield* selectedCliAgentId.set(Option.some(agent.id))
-  return agent
-})
-
-const getOrSelectCliAgent = Effect.gen(function* () {
-  const selectedAgent = (yield* selectedCliAgentId.get).pipe(
-    Option.filterMap((id) =>
-      Array.findFirst(allCliAgents, (agent) => agent.id === id),
-    ),
-  )
-  if (Option.isSome(selectedAgent)) {
-    return selectedAgent.value
-  }
-  return yield* selectCliAgent
-})

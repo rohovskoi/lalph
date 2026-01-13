@@ -14,8 +14,10 @@ import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { CurrentProject, labelSelect, Linear } from "./Linear.ts"
 import { layerKvs } from "./Kvs.ts"
 import { Settings } from "./Settings.ts"
-import { run, selectCliAgent } from "./Runner.ts"
+import { run } from "./Runner.ts"
 import { RateLimiter } from "effect/unstable/persistence"
+import { plan } from "./Planner.ts"
+import { selectCliAgent } from "./CliAgent.ts"
 
 const selectProject = Command.make("select-project").pipe(
   Command.withDescription("Select the current Linear project"),
@@ -50,6 +52,11 @@ const selectLabel = Command.make("select-label").pipe(
 const selectAgent = Command.make("select-agent").pipe(
   Command.withDescription("Select the CLI agent to use"),
   Command.withHandler(() => selectCliAgent),
+)
+
+const planMode = Command.make("plan").pipe(
+  Command.withDescription("Iterate on an issue plan and create PRD tasks"),
+  Command.withHandler(() => plan),
 )
 
 const iterations = Flag.integer("iterations").pipe(
@@ -152,7 +159,7 @@ const root = Command.make("lalph", { iterations, concurrency, autoMerge }).pipe(
       yield* FiberSet.awaitEmpty(fibers)
     }, Effect.scoped),
   ),
-  Command.withSubcommands([selectProject, selectLabel, selectAgent]),
+  Command.withSubcommands([selectProject, selectLabel, selectAgent, planMode]),
 )
 
 Command.run(root, {
