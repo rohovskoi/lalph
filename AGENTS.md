@@ -6,6 +6,8 @@
 
 # Development workflow
 
+- First run `pnpm install` to ensure all dependencies are installed and up to
+  date.
 - Every commit should pass type checking (`tsc --noEmit`)
 - Every commit should be formatted correctly (`prettier --check`)
 - Every PR should include a changeset when it affects published packages.
