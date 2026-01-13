@@ -29,6 +29,13 @@ export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
 }) {
   static Array = Schema.Array(this)
   static ArrayFromJson = Schema.toCodecJson(this.Array)
+  static arrayToJson(issues: ReadonlyArray<PrdIssue>): string {
+    return JSON.stringify(
+      Schema.encodeSync(this.ArrayFromJson)(issues),
+      null,
+      2,
+    )
+  }
 
   static jsonSchemaDoc = Schema.toJsonSchemaDocument(this)
   static jsonSchema = {
@@ -54,8 +61,7 @@ export class PrdList<O = unknown> extends Data.Class<{
 
   toJson(): string {
     const issuesArray = Array.from(this.issues.values())
-    const encoded = Schema.encodeSync(PrdIssue.ArrayFromJson)(issuesArray)
-    return JSON.stringify(encoded, null, 2)
+    return PrdIssue.arrayToJson(issuesArray)
   }
 
   cast<T>(): PrdList<T> {

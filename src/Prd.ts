@@ -13,6 +13,7 @@ import { selectedLabelId, selectedTeamId } from "./Settings.ts"
 import type { Issue } from "@linear/sdk"
 import { Worktree } from "./Worktree.ts"
 import { PrdIssue, PrdList } from "./domain/PrdIssue.ts"
+import type { Mutable } from "effect/Types"
 
 export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
   make: Effect.gen(function* () {
@@ -24,34 +25,30 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     const teamId = Option.getOrThrow(yield* selectedTeamId.get)
     const labelId = yield* selectedLabelId.get
 
-    const getIssues = linear
-      .stream(() =>
-        project.issues({
-          filter: {
-            assignee: { isMe: { eq: true } },
-            labels: {
-              id: labelId.pipe(
-                Option.map((eq) => ({ eq })),
-                Option.getOrNull,
-              ),
+    const getIssues = (states: Array<string>) =>
+      linear
+        .stream(() =>
+          project.issues({
+            filter: {
+              assignee: { isMe: { eq: true } },
+              labels: {
+                id: labelId.pipe(
+                  Option.map((eq) => ({ eq })),
+                  Option.getOrNull,
+                ),
+              },
+              state: {
+                type: { in: states },
+              },
             },
-            state: {
-              type: { eq: "unstarted" },
-            },
-          },
-        }),
-      )
-      .pipe(Stream.runCollect)
+          }),
+        )
+        .pipe(Stream.runCollect)
 
     const prdFile = pathService.join(worktree.directory, `.lalph`, `prd.json`)
 
-    const updatePrdFile = Effect.gen(function* () {
-      const initial = yield* getIssues.pipe(Effect.map(listFromLinear))
-      yield* fs.writeFileString(prdFile, initial.toJson())
-      return initial
-    })
-
-    const initial = yield* updatePrdFile
+    const initial = listFromLinear(yield* getIssues(["unstarted"]))
+    yield* fs.writeFileString(prdFile, initial.toJson())
     if (initial.issues.size === 0) {
       return yield* new NoMoreWork({})
     }
@@ -67,13 +64,14 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
 
     const sync = Effect.gen(function* () {
       const json = yield* fs.readFileString(prdFile)
-      const current = listFromLinear(yield* getIssues)
+      const current = listFromLinear(yield* getIssues(["unstarted", "started"]))
       const updated = PrdList.fromJson(json)
+      let createdIssues = 0
 
       for (const issue of updated) {
         if (issue.id === null) {
           // create new issue
-          yield* linear.use((c) =>
+          const created = yield* linear.use((c) =>
             c.createIssue({
               teamId,
               projectId: project.id,
@@ -85,6 +83,9 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
               stateId: issue.stateId,
             }),
           )
+          const mutable = issue as Mutable<PrdIssue>
+          mutable.id = created.issueId ?? null
+          createdIssues++
           continue
         }
         const existing = current.issues.get(issue.id)
@@ -109,9 +110,11 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           updatedIssues.set(issue.id, entry)
         }
         entry.count++
-        console.log("updates", updatedIssues)
       }
-    }).pipe(Effect.uninterruptible, Effect.makeSemaphoreUnsafe(1).withPermit)
+
+      if (createdIssues === 0) return
+      yield* fs.writeFileString(prdFile, PrdIssue.arrayToJson(updated))
+    }).pipe(Effect.uninterruptible)
 
     yield* Effect.addFinalizer(() =>
       Effect.forEach(
@@ -130,14 +133,12 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       ).pipe(Effect.ignore),
     )
 
-    yield* Effect.addFinalizer(() => Effect.ignore(sync))
-
     yield* fs.watch(prdFile).pipe(
       Stream.buffer({
         capacity: 1,
         strategy: "dropping",
       }),
-      Stream.runForEach(() => Effect.ignore(sync)),
+      Stream.runForEach((_) => Effect.ignore(sync)),
       Effect.forkScoped,
     )
 
