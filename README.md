@@ -12,8 +12,10 @@ A small CLI that connects to Linear, pulls the next set of unstarted issues into
 
 The first run opens a Linear OAuth flow and stores the token locally.
 
+It is recommended to add `.lalph/` to your `.gitignore` to avoid committing your
+credentials.
+
 ## Development
 
 - Install dependencies: `pnpm install`
 - Build the CLI: `pnpm build`
-- Add `.lalph/` to `.gitignore` to keep local state private
