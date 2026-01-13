@@ -29,6 +29,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       .stream(() =>
         project.issues({
           filter: {
+            assignee: { isMe: { eq: true } },
             labels: {
               id: labelId.pipe(
                 Option.map((eq) => ({ eq })),
