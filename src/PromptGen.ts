@@ -21,6 +21,7 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
    - If there is an existing PR, checkout the branch for that PR.
    - If there is an existing PR, check if there are any new comments or requested
      changes, and address them as part of the task.
+   - New branches should be named using the format \`{task id}/description\`.
 4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 5. APPEND your progress to the PROGRESS.md file.
 6. Create or update the pull request with your changes once the task is complete. The title of
