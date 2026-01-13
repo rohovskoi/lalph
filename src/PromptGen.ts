@@ -30,7 +30,7 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
      changes, and address them as part of the task.
 4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 5. APPEND your progress to the PROGRESS.md file.
-6. Open or update the existing pull request with your changes once the task is complete. The title of
+6. Create or update the pull request with your changes once the task is complete. The title of
    the PR should include the task id. The PR description should include a
    summary of the changes made.
 7. Update the prd.json file to reflect any changes in task states.
