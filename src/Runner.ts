@@ -42,7 +42,7 @@ export const run = Effect.fnUntraced(
       RunnerStalled
     > {
       const now = DateTime.nowUnsafe()
-      const deadline = DateTime.addDuration(now, options.stallTimeout)
+      const deadline = DateTime.addDuration(lastOutputAt, options.stallTimeout)
       if (DateTime.isLessThan(deadline, now)) {
         return Effect.fail(new RunnerStalled())
       }
