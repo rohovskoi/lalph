@@ -19,7 +19,7 @@ import { RateLimiter } from "effect/unstable/persistence"
 import { plan } from "./Planner.ts"
 import { selectCliAgent } from "./CliAgent.ts"
 
-const selectProject = Command.make("select-project").pipe(
+const selectProject = Command.make("project").pipe(
   Command.withDescription("Select the current Linear project"),
   Command.withHandler(
     Effect.fnUntraced(
@@ -159,7 +159,7 @@ const root = Command.make("lalph", { iterations, concurrency, autoMerge }).pipe(
       yield* FiberSet.awaitEmpty(fibers)
     }, Effect.scoped),
   ),
-  Command.withSubcommands([selectProject, selectLabel, selectAgent, planMode]),
+  Command.withSubcommands([planMode, selectProject, selectLabel, selectAgent]),
 )
 
 Command.run(root, {

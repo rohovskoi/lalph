@@ -73,6 +73,9 @@ important to work on next.
   \`stateId\` and leaving some notes in the task's \`description\` field about the
   challenges faced.
 
+**Important:** If it feels like you are brute forcing your way through a task,
+STOP and move the task back to "todo" state with notes on why in the description.
+
 ${prdNotes}`
 
       const planPrompt = (idea: string) => `# Instructions
