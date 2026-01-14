@@ -61,7 +61,8 @@ ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
 8. Update the prd.json file to reflect any changes in task states.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes.
-   - If you believe the task is complete, update the \`stateId\` for "review" or "done".
+   - If you believe the task is complete, update the \`stateId\` for "review".
+     Only if no "review" state exists, use a completed state.
 
 Remember, only work on a single task at a time, that you decide is the most
 important to work on next.
