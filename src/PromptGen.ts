@@ -59,10 +59,19 @@ ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes.
    - If you believe the task is complete, update the \`stateId\` for "review" or "done".
-   - If you were unable to finish the task, update the \`stateId\` back to "todo" with notes on what is left to do.
 
 Remember, only work on a single task at a time, that you decide is the most
 important to work on next.
+
+## Alternate flows
+
+- If at any point you decide that a task is too large or complex to complete in a
+  single iteration, break it down into smaller tasks and add them to the prd.json
+  file. Then, mark the original task as "blocked" or "deferred" by updating its
+  \`stateId\`.
+- If for any reason you get stuck on a task, mark the task back as "todo" by updating its
+  \`stateId\` and leaving some notes in the task's \`description\` field about the
+  challenges faced.
 
 ${prdNotes}`
 

@@ -100,6 +100,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
         // update existing issue
         yield* linear.use((c) =>
           c.updateIssue(original.id, {
+            title: issue.title,
             description: issue.description,
             stateId: issue.stateId,
           }),

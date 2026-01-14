@@ -45,7 +45,9 @@ export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
 
   isChangedComparedTo(issue: PrdIssue): boolean {
     return (
-      this.description !== issue.description || this.stateId !== issue.stateId
+      this.title !== issue.title ||
+      this.description !== issue.description ||
+      this.stateId !== issue.stateId
     )
   }
 }
