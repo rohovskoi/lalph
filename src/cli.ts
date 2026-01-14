@@ -9,55 +9,29 @@ import {
   FiberSet,
   Filter,
   Layer,
-  Option,
 } from "effect"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { CurrentProject, labelSelect, Linear } from "./Linear.ts"
-import { layerKvs } from "./Kvs.ts"
 import { Settings } from "./Settings.ts"
 import { run } from "./Runner.ts"
 import { RateLimiter } from "effect/unstable/persistence"
 import { plan } from "./Planner.ts"
-import { selectCliAgent } from "./CliAgent.ts"
-
-const selectProject = Command.make("project").pipe(
-  Command.withDescription("Select the current Linear project"),
-  Command.withHandler(
-    Effect.fnUntraced(
-      function* () {
-        const project = yield* CurrentProject.select
-        yield* Effect.log(
-          `Selected Linear Project: ${project.name} (${project.id})`,
-        )
-      },
-      Effect.provide([layerKvs, Linear.layer]),
-    ),
-  ),
-)
-
-const selectLabel = Command.make("select-label").pipe(
-  Command.withDescription("Select the label to filter issues by"),
-  Command.withHandler(
-    Effect.fnUntraced(function* () {
-      const label = yield* labelSelect
-      yield* Effect.log(
-        `Selected Label: ${Option.match(label, {
-          onNone: () => "No Label",
-          onSome: (l) => l.name,
-        })}`,
-      )
-    }),
-  ),
-)
+import { getOrSelectCliAgent, selectCliAgent } from "./CliAgent.ts"
+import { CurrentIssueSource, selectIssueSource } from "./IssueSources.ts"
 
 const selectAgent = Command.make("select-agent").pipe(
   Command.withDescription("Select the CLI agent to use"),
   Command.withHandler(() => selectCliAgent),
 )
 
+const selectSource = Command.make("source").pipe(
+  Command.withDescription("Select the issue source to use"),
+  Command.withHandler(() => selectIssueSource),
+)
+
 const planMode = Command.make("plan").pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(() => plan),
+  Command.provide(CurrentIssueSource),
 )
 
 const iterations = Flag.integer("iterations").pipe(
@@ -106,6 +80,8 @@ const root = Command.make("lalph", {
       maxIterationMinutes,
       stallMinutes,
     }) {
+      yield* getOrSelectCliAgent
+
       const isFinite = Number.isFinite(iterations)
       const iterationsDisplay = isFinite ? iterations : "unlimited"
       const runConcurrency = Math.max(1, concurrency)
@@ -190,7 +166,8 @@ const root = Command.make("lalph", {
       yield* FiberSet.awaitEmpty(fibers)
     }, Effect.scoped),
   ),
-  Command.withSubcommands([planMode, selectProject, selectLabel, selectAgent]),
+  Command.provide(CurrentIssueSource),
+  Command.withSubcommands([planMode, selectSource, selectAgent]),
 )
 
 Command.run(root, {
@@ -199,7 +176,6 @@ Command.run(root, {
   Effect.provide(
     Layer.mergeAll(
       Settings.layer,
-      Linear.layer,
       RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory)),
     ).pipe(Layer.provideMerge(NodeServices.layer)),
   ),

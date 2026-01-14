@@ -60,10 +60,6 @@ export class Setting<
   }
 }
 
-export const selectedTeamId = new Setting("selectedTeamId", Schema.String)
-
-export const selectedLabelId = new Setting("selectedLabelId", Schema.String)
-
 export const selectedCliAgentId = new Setting(
   "selectedCliAgentId",
   Schema.Literals(allCliAgents.map((a) => a.id)),

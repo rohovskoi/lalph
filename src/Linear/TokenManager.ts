@@ -30,7 +30,10 @@ export class TokenManager extends ServiceMap.Service<TokenManager>()(
   "lalph/Linear/TokenManager",
   {
     make: Effect.gen(function* () {
-      const kvs = yield* KeyValueStore.KeyValueStore
+      const kvs = KeyValueStore.prefix(
+        yield* KeyValueStore.KeyValueStore,
+        "linear.accessToken",
+      )
       const tokenStore = KeyValueStore.toSchemaStore(kvs, AccessToken)
 
       const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -40,10 +43,10 @@ export class TokenManager extends ServiceMap.Service<TokenManager>()(
         }),
       )
 
-      let currentToken = yield* Effect.orDie(tokenStore.get("accessToken"))
+      let currentToken = yield* Effect.orDie(tokenStore.get(""))
       const set = (token: AccessToken) =>
-        Effect.orDie(tokenStore.set("accessToken", token))
-      const clear = Effect.orDie(tokenStore.remove("accessToken"))
+        Effect.orDie(tokenStore.set("", token))
+      const clear = Effect.orDie(tokenStore.remove(""))
 
       const getNoLock: Effect.Effect<
         AccessToken,

@@ -1,5 +1,6 @@
 import { Effect, Schema, ServiceMap } from "effect"
 import type { PrdIssue } from "./domain/PrdIssue.ts"
+import type { Settings } from "./Settings.ts"
 
 /**
  * Current unused, but eventually will represent a source of issues so we can
@@ -18,12 +19,18 @@ export class IssueSource extends ServiceMap.Service<
         }
       >
     >
+
     readonly issues: Effect.Effect<ReadonlyArray<PrdIssue>, IssueSourceError>
+
     readonly createIssue: (
       issue: PrdIssue,
-    ) => Effect.Effect<void, IssueSourceError>
+    ) => Effect.Effect<string, IssueSourceError>
+
     readonly updateIssue: (options: {
       readonly issueId: string
+      readonly title: string
+      readonly description: string
+      readonly stateId: string
     }) => Effect.Effect<void, IssueSourceError>
   }
 >()("lalph/IssueSource") {}

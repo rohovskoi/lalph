@@ -1,12 +1,13 @@
 import { Effect, Layer, ServiceMap } from "effect"
-import { Linear } from "./Linear.ts"
 import { PrdIssue } from "./domain/PrdIssue.ts"
+import { IssueSource } from "./IssueSource.ts"
 
 export class PromptGen extends ServiceMap.Service<PromptGen>()(
   "lalph/PromptGen",
   {
     make: Effect.gen(function* () {
-      const linear = yield* Linear
+      const source = yield* IssueSource
+      const states = yield* source.states
 
       const prdNotes = `## prd.json format
 
@@ -15,7 +16,7 @@ Each item in the prd.json file represents a task for the current project.
 The \`stateId\` field indicates the current state of the task. The possible states
 are:
 
-${Array.from(linear.states.values(), (state) => `- **${state.name}** (stateId: \`${state.id}\`)`).join("\n")}
+${Array.from(states.values(), (state) => `- **${state.name}** (stateId: \`${state.id}\`)`).join("\n")}
 
 ### Adding tasks
 
@@ -132,5 +133,5 @@ ${prdNotes}`
     }),
   },
 ) {
-  static layer = Layer.effect(this, this.make).pipe(Layer.provide(Linear.layer))
+  static layer = Layer.effect(this, this.make)
 }

@@ -10,18 +10,17 @@ import {
 import {
   Connection,
   Issue,
-  IssueLabel,
   LinearClient,
   Project,
   WorkflowState,
 } from "@linear/sdk"
 import { TokenManager } from "./Linear/TokenManager.ts"
-import { KeyValueStore } from "effect/unstable/persistence"
 import { Prompt } from "effect/unstable/cli"
-import { layerKvs } from "./Kvs.ts"
-import { selectedLabelId, selectedTeamId, Settings } from "./Settings.ts"
+import { Setting } from "./Settings.ts"
+import { IssueSource, IssueSourceError } from "./IssueSource.ts"
+import { PrdIssue } from "./domain/PrdIssue.ts"
 
-export class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
+class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
   make: Effect.gen(function* () {
     const tokens = yield* TokenManager
 
@@ -101,79 +100,164 @@ export class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
   )
 }
 
+export const LinearIssueSource = Layer.effect(
+  IssueSource,
+  Effect.gen(function* () {
+    const linear = yield* Linear
+
+    const project = yield* getOrSelectProject
+    const teamId = yield* getOrSelectTeamId(project)
+    const labelId = yield* getOrSelectLabel
+
+    // Map of linear identifier to issue id
+    const identifierMap = new Map<string, string>()
+
+    const statesMap = new Map<
+      string,
+      {
+        readonly id: string
+        readonly name: string
+        readonly kind: "unstarted" | "started" | "completed"
+      }
+    >()
+    linear.states.forEach((state) => {
+      statesMap.set(state.id, {
+        id: state.id,
+        name: state.name,
+        kind:
+          state.type === "started"
+            ? "started"
+            : state.type === "unstarted"
+              ? "unstarted"
+              : "completed",
+      })
+    })
+
+    const issues = linear
+      .stream(() =>
+        project.issues({
+          filter: {
+            assignee: { isMe: { eq: true } },
+            labels: {
+              id: labelId.pipe(
+                Option.map((eq) => ({ eq })),
+                Option.getOrNull,
+              ),
+            },
+            state: {
+              type: { in: ["unstarted", "started", "completed"] },
+            },
+          },
+        }),
+      )
+      .pipe(
+        Stream.mapEffect(
+          Effect.fnUntraced(function* (issue) {
+            identifierMap.set(issue.identifier, issue.id)
+            const state = linear.states.get(issue.stateId!)!
+            const blockedBy = yield* linear.blockedBy(issue)
+            return new PrdIssue({
+              id: issue.identifier,
+              title: issue.title,
+              description: issue.description ?? "",
+              priority: issue.priority,
+              estimate: issue.estimate ?? null,
+              stateId: issue.stateId!,
+              complete: state.type !== "unstarted",
+              blockedBy: blockedBy.map((i) => i.identifier),
+              githubPrNumber: null,
+            })
+          }),
+          { concurrency: 10 },
+        ),
+        Stream.runCollect,
+        Effect.mapError((cause) => new IssueSourceError({ cause })),
+      )
+
+    return IssueSource.of({
+      states: Effect.succeed(statesMap),
+      issues,
+      createIssue: Effect.fnUntraced(
+        function* (issue: PrdIssue) {
+          const created = yield* linear.use((c) =>
+            c.createIssue({
+              teamId,
+              projectId: project.id,
+              assigneeId: linear.viewer.id,
+              labelIds: Option.toArray(labelId),
+              title: issue.title,
+              description: issue.description,
+              priority: issue.priority,
+              estimate: issue.estimate,
+              stateId: issue.stateId,
+            }),
+          )
+          const linearIssue = yield* linear.use(() => created.issue!)
+          identifierMap.set(linearIssue.identifier, linearIssue.id)
+          return linearIssue.identifier
+        },
+        Effect.mapError((cause) => new IssueSourceError({ cause })),
+      ),
+      updateIssue: Effect.fnUntraced(
+        function* (options) {
+          const issueId = identifierMap.get(options.issueId)!
+          yield* linear.use((c) =>
+            c.updateIssue(issueId, {
+              title: options.title,
+              description: options.description,
+              stateId: options.stateId,
+            }),
+          )
+        },
+        Effect.mapError((cause) => new IssueSourceError({ cause })),
+      ),
+    })
+  }),
+).pipe(Layer.provide(Linear.layer))
+
+export const resetLinear = Effect.gen(function* () {
+  yield* selectedProjectId.set(Option.none())
+  yield* selectedTeamId.set(Option.none())
+  yield* selectedLabelId.set(Option.none())
+})
+
 export class LinearError extends Schema.ErrorClass("lalph/LinearError")({
   _tag: Schema.tag("LinearError"),
   cause: Schema.Defect,
 }) {}
 
-export class CurrentProject extends ServiceMap.Service<
-  CurrentProject,
-  Project
->()("lalph/Linear/CurrentProject") {
-  static store = KeyValueStore.KeyValueStore.use((_) =>
-    Effect.succeed(KeyValueStore.prefix(_, "linear.currentProjectId")),
-  )
+// Project selection
 
-  static select = Effect.gen(function* () {
-    const kvs = yield* CurrentProject.store
-    const linear = yield* Linear
-
-    const projects = yield* Stream.runCollect(linear.projects)
-
-    const project = yield* Prompt.select({
-      message: "Select a Linear project",
-      choices: projects.map((project) => ({
-        title: project.name,
-        value: project,
-      })),
-    })
-
-    yield* kvs.set("", project.id)
-
-    yield* teamSelect(project)
-    yield* labelSelect
-
-    return project
-  })
-
-  static get = Effect.gen(function* () {
-    const linear = yield* Linear
-    const kvs = yield* CurrentProject.store
-    const projectId = yield* kvs.get("")
-
-    return projectId
-      ? yield* linear
-          .use((c) => c.project(projectId))
-          .pipe(Effect.catch(() => CurrentProject.select))
-      : yield* CurrentProject.select
-  })
-
-  static layer = Layer.effect(this, this.get).pipe(
-    Layer.provide([Linear.layer, layerKvs, Settings.layer]),
-  )
-}
-
-export const labelSelect = Effect.gen(function* () {
+const selectedProjectId = new Setting("linear.selectedProjectId", Schema.String)
+const selectProject = Effect.gen(function* () {
   const linear = yield* Linear
-  const labels = yield* Stream.runCollect(linear.labels)
-  const label = yield* Prompt.select({
-    message: "Select a label to filter issues by",
-    choices: [
-      {
-        title: "No Label",
-        value: Option.none<IssueLabel>(),
-      },
-    ].concat(
-      labels.map((label) => ({
-        title: label.name,
-        value: Option.some(label),
-      })),
-    ),
+
+  const projects = yield* Stream.runCollect(linear.projects)
+
+  const project = yield* Prompt.select({
+    message: "Select a Linear project",
+    choices: projects.map((project) => ({
+      title: project.name,
+      value: project,
+    })),
   })
-  yield* selectedLabelId.set(Option.map(label, (l) => l.id))
-  return label
+
+  yield* selectedProjectId.set(Option.some(project.id))
+
+  return project
+})
+const getOrSelectProject = Effect.gen(function* () {
+  const linear = yield* Linear
+  return yield* selectedProjectId.get.pipe(
+    Effect.flatMap((o) => o.asEffect()),
+    Effect.flatMap((projectId) => linear.use((c) => c.project(projectId))),
+    Effect.catch(() => selectProject),
+  )
 })
 
+// Team selection
+
+const selectedTeamId = new Setting("linear.selectedTeamId", Schema.String)
 const teamSelect = Effect.fnUntraced(function* (project: Project) {
   const linear = yield* Linear
   const teams = yield* Stream.runCollect(linear.stream(() => project.teams()))
@@ -185,4 +269,46 @@ const teamSelect = Effect.fnUntraced(function* (project: Project) {
     })),
   })
   yield* selectedTeamId.set(Option.some(teamId))
+  return teamId
+})
+const getOrSelectTeamId = Effect.fnUntraced(function* (project: Project) {
+  const teamIdOption = yield* selectedTeamId.get
+  if (Option.isSome(teamIdOption)) {
+    return teamIdOption.value
+  }
+  return yield* teamSelect(project)
+})
+
+// Label filter selection
+
+const selectedLabelId = new Setting(
+  "linear.selectedLabelId",
+  Schema.Option(Schema.String),
+)
+const labelIdSelect = Effect.gen(function* () {
+  const linear = yield* Linear
+  const labels = yield* Stream.runCollect(linear.labels)
+  const labelId = yield* Prompt.select({
+    message: "Select a label to filter issues by",
+    choices: [
+      {
+        title: "No Label",
+        value: Option.none<string>(),
+      },
+    ].concat(
+      labels.map((label) => ({
+        title: label.name,
+        value: Option.some(label.id),
+      })),
+    ),
+  })
+  yield* selectedLabelId.set(Option.some(labelId))
+  return labelId
+})
+const getOrSelectLabel = Effect.gen(function* () {
+  const labedId = yield* selectedLabelId.get
+  if (Option.isSome(labedId)) {
+    return labedId.value
+  }
+  return yield* labelIdSelect
 })
