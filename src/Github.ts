@@ -118,7 +118,6 @@ export const GithubIssueSource = Layer.effect(
               stateId: issue.state === "closed" ? "closed" : "open",
               complete: issue.state === "closed",
               blockedBy: [],
-              githubPrNumber: null,
             }),
         ),
         Stream.runCollect,
