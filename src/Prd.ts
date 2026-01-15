@@ -1,10 +1,10 @@
 import {
   Array,
-  Console,
   Effect,
   FileSystem,
   Layer,
   Path,
+  Schedule,
   ServiceMap,
   Stream,
 } from "effect"
@@ -19,6 +19,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     const fs = yield* FileSystem.FileSystem
     const source = yield* IssueSource
 
+    const lalphDir = pathService.join(worktree.directory, `.lalph`)
     const prdFile = pathService.join(worktree.directory, `.lalph`, `prd.json`)
 
     let current = yield* source.issues
@@ -31,6 +32,16 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
         readonly originalStateId: string
       }
     >()
+
+    yield* fs.watch(lalphDir).pipe(
+      Stream.buffer({
+        capacity: 1,
+        strategy: "dropping",
+      }),
+      Stream.runForEach((_) => Effect.ignore(sync)),
+      Effect.retry(Schedule.forever),
+      Effect.forkScoped,
+    )
 
     const sync = Effect.gen(function* () {
       const json = yield* fs.readFileString(prdFile)
@@ -97,7 +108,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           }),
         ),
       )
-    }).pipe(Console.withTime("Prd.sync"), Effect.uninterruptible)
+    }).pipe(Effect.uninterruptible)
 
     const mergableGithubPrs = Effect.gen(function* () {
       const json = yield* fs.readFileString(prdFile)
@@ -127,15 +138,6 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           }),
         { concurrency: "unbounded", discard: true },
       ),
-    )
-
-    yield* fs.watch(prdFile).pipe(
-      Stream.buffer({
-        capacity: 1,
-        strategy: "dropping",
-      }),
-      Stream.runForEach((_) => Effect.ignore(sync)),
-      Effect.forkScoped,
     )
 
     return { path: prdFile, mergableGithubPrs, revertStateIds } as const

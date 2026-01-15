@@ -7,6 +7,10 @@ export class CliAgent extends Data.Class<{
     readonly prompt: string
     readonly prdFilePath: string
   }) => ReadonlyArray<string>
+  commandPlan: (options: {
+    readonly prompt: string
+    readonly prdFilePath: string
+  }) => ReadonlyArray<string>
 }> {}
 
 export const opencode = new CliAgent({
@@ -21,6 +25,15 @@ export const opencode = new CliAgent({
     "-f",
     prdFilePath,
   ],
+  commandPlan: ({ prompt, prdFilePath }) => [
+    "npx",
+    "-y",
+    "opencode-ai@latest",
+    "--prompt",
+    `@${prdFilePath}
+
+${prompt}`,
+  ],
 })
 
 export const claude = new CliAgent({
@@ -31,6 +44,14 @@ export const claude = new CliAgent({
     "-y",
     "@anthropic-ai/claude-code@latest",
     "-p",
+    `@${prdFilePath}
+
+${prompt}`,
+  ],
+  commandPlan: ({ prompt, prdFilePath }) => [
+    "npx",
+    "-y",
+    "@anthropic-ai/claude-code@latest",
     `@${prdFilePath}
 
 ${prompt}`,

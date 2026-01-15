@@ -116,30 +116,7 @@ Users idea / request: ${idea}
  
 ${prdNotes}`
 
-      const planPromptFollowup = (feedback: string) => `# Instructions
-
-Users feedback on plan: ${feedback}
-
-1. Review the existing plan in the prd.json and lalph-plan.md files.
-2. Based on the user's feedback above, update the plan as needed by adding,
-   removing, or modifying tasks in the prd.json file.
-   - Make sure to research the codebase before creating any tasks, to ensure they
-     are relevant and feasible.
-   - Check if similar tasks already exist in the prd.json file to avoid duplication.
-   - The tasks should start in a "Todo" state (i.e., not started yet).
-   - Each task description should include a short summary and a brief list of steps
-     to complete it.
-     descriptions.
-   - Each task should be small and take a hour or less to complete.
-     Instead of creating tasks like "Refactor the authentication system", create
-     smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-3. Update the lalph-plan.md file to reflect any changes made to the plan.
-4. Ensure that the tasks remain actionable and specific, avoiding vague or
-   high-level descriptions.
-
-${prdNotes}`
-
-      return { prompt, planPrompt, planPromptFollowup } as const
+      return { prompt, planPrompt } as const
     }),
   },
 ) {
