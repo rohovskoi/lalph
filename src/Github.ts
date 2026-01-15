@@ -89,8 +89,6 @@ export const GithubIssueSource = Layer.effect(
       )
     const [owner, repo] = nameWithOwner.split("/") as [string, string]
 
-    console.log({ owner, repo })
-
     const issues = yield* github
       .stream((rest, page) =>
         rest.issues.listForRepo({
@@ -106,9 +104,12 @@ export const GithubIssueSource = Layer.effect(
         Stream.runCollect,
       )
 
-    console.log("found issues:", issues)
-
     return yield* Effect.never
+
+    // TODO: Implement
+    // return IssueSource.of({
+    //
+    // })
   }),
 ).pipe(Layer.provide(Github.layer))
 
