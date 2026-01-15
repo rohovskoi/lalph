@@ -93,11 +93,26 @@ export const GithubIssueSource = Layer.effect(
     const states = new Map([
       ["open", { id: "open", name: "Open", kind: "unstarted" as const }],
       [
+        "in-progress",
+        { id: "in-progress", name: "In progress", kind: "started" as const },
+      ],
+      [
         "in-review",
-        { id: "in-review", name: "In Review", kind: "completed" as const },
+        { id: "in-review", name: "In review", kind: "completed" as const },
       ],
       ["closed", { id: "closed", name: "Closed", kind: "completed" as const }],
     ])
+
+    const hasLabel = (
+      label: ReadonlyArray<
+        | string
+        | {
+            readonly name?: string
+          }
+      >,
+      name: string,
+    ): boolean =>
+      label.some((l) => (typeof l === "string" ? l === name : l.name === name))
 
     const issues = github
       .stream((rest, page) =>
@@ -122,13 +137,11 @@ export const GithubIssueSource = Layer.effect(
               stateId:
                 issue.state === "closed"
                   ? "closed"
-                  : issue.labels.some((label) =>
-                        typeof label === "string"
-                          ? label === "in-review"
-                          : label.name === "in-review",
-                      )
-                    ? "in-review"
-                    : "open",
+                  : hasLabel(issue.labels, "in-progress")
+                    ? "in-progress"
+                    : hasLabel(issue.labels, "in-review")
+                      ? "in-review"
+                      : "open",
               complete: issue.state === "closed",
               blockedBy: [],
               githubPrNumber: null,
@@ -186,8 +199,13 @@ export const GithubIssueSource = Layer.effect(
           }
           if (options.stateId !== undefined) {
             update.state = options.stateId === "closed" ? "closed" : "open"
+
             if (options.stateId === "in-review") {
               update.labels = ["in-review"]
+            } else if (options.stateId === "in-progress") {
+              update.labels = ["in-progress"]
+            } else {
+              update.labels = []
             }
           }
 
