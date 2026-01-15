@@ -17,11 +17,9 @@ export const plan = Effect.gen(function* () {
     message: "Enter the idea / request:",
   })
 
-  yield* Effect.never
-
   const cliCommand = cliAgent.commandPlan({
     prompt: promptGen.planPrompt(idea),
-    prdFilePath: pathService.join(".lalph", "prd.json"),
+    prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.json"),
   })
   const exitCode = yield* ChildProcess.make(
     cliCommand[0]!,
@@ -29,6 +27,9 @@ export const plan = Effect.gen(function* () {
     {
       cwd: worktree.directory,
       extendEnv: true,
+      env: {
+        PWD: worktree.directory,
+      },
       stdout: "inherit",
       stderr: "inherit",
       stdin: "inherit",
