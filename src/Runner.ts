@@ -60,8 +60,10 @@ export const run = Effect.fnUntraced(
     const exitCode = yield* handle.exitCode
     yield* Effect.log(`Agent exited with code: ${exitCode}`)
 
-    if (options.autoMerge) {
-      const prs = yield* prd.mergableGithubPrs
+    const prs = yield* prd.mergableGithubPrs
+    if (prs.length === 0) {
+      yield* prd.revertStateIds({ reason: "inactivity" })
+    } else if (options.autoMerge) {
       for (const pr of prs) {
         yield* ChildProcess.make`gh pr merge ${pr} -sd`.pipe(
           ChildProcess.exitCode,
@@ -73,7 +75,7 @@ export const run = Effect.fnUntraced(
   Effect.onError(
     Effect.fnUntraced(function* () {
       const prd = yield* Prd
-      yield* Effect.ignore(prd.revertStateIds)
+      yield* Effect.ignore(prd.revertStateIds({ reason: "error" }))
     }),
   ),
   Effect.scoped,
