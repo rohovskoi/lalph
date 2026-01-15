@@ -115,9 +115,16 @@ export const GithubIssueSource = Layer.effect(
     ): boolean =>
       label.some((l) => (typeof l === "string" ? l === name : l.name === name))
 
-    const listDependenciesBlockedBy = github.wrap(
-      (rest) => (rest as any).issues.listDependenciesBlockedBy,
-    )
+    const listDeps = (issueId: number) =>
+      github.stream((rest, page) =>
+        rest.issues.listDependenciesBlockedBy({
+          owner,
+          repo,
+          issue_number: issueId,
+          per_page: 100,
+          page,
+        }),
+      )
 
     const issues = github
       .stream((rest, page) =>
@@ -148,26 +155,10 @@ export const GithubIssueSource = Layer.effect(
         Stream.filter((issue) => issue.pull_request === undefined),
         Stream.mapEffect(
           Effect.fnUntraced(function* (issue) {
-            const dependencies = (yield* listDependenciesBlockedBy({
-              owner,
-              repo,
-              issue_number: issue.number,
-            })) as Array<{
-              readonly number?: number
-              readonly state?: string
-              readonly issue?: {
-                readonly number?: number
-                readonly state?: string
-              }
-            }>
-            const blockedBy = dependencies.flatMap((dependency) => {
-              const state = dependency.state ?? dependency.issue?.state
-              if (state === "closed") return []
-              const number = dependency.number ?? dependency.issue?.number
-              if (number === undefined) return []
-              return [`#${number}`]
-            })
-
+            const dependencies = yield* listDeps(issue.number).pipe(
+              Stream.filter((dep) => dep.state === "open"),
+              Stream.runCollect,
+            )
             return new PrdIssue({
               id: `#${issue.number}`,
               title: issue.title,
@@ -183,7 +174,7 @@ export const GithubIssueSource = Layer.effect(
                       ? "in-review"
                       : "open",
               complete: issue.state === "closed",
-              blockedBy,
+              blockedBy: dependencies.map((dep) => `#${dep.number}`),
               githubPrNumber: null,
             })
           }),
