@@ -92,6 +92,10 @@ export const GithubIssueSource = Layer.effect(
 
     const states = new Map([
       ["open", { id: "open", name: "Open", kind: "unstarted" as const }],
+      [
+        "in-review",
+        { id: "in-review", name: "In Review", kind: "completed" as const },
+      ],
       ["closed", { id: "closed", name: "Closed", kind: "completed" as const }],
     ])
 
@@ -110,14 +114,24 @@ export const GithubIssueSource = Layer.effect(
         Stream.map(
           (issue) =>
             new PrdIssue({
-              id: issue.number.toString(),
+              id: `#${issue.number}`,
               title: issue.title,
               description: issue.body ?? "",
-              priority: 3,
+              priority: 0,
               estimate: null,
-              stateId: issue.state === "closed" ? "closed" : "open",
+              stateId:
+                issue.state === "closed"
+                  ? "closed"
+                  : issue.labels.some((label) =>
+                        typeof label === "string"
+                          ? label === "in-review"
+                          : label.name === "in-review",
+                      )
+                    ? "in-review"
+                    : "open",
               complete: issue.state === "closed",
               blockedBy: [],
+              githubPrNumber: null,
             }),
         ),
         Stream.runCollect,
@@ -125,6 +139,7 @@ export const GithubIssueSource = Layer.effect(
       )
 
     const createIssue = github.wrap((rest) => rest.issues.create)
+    const updateIssue = github.wrap((rest) => rest.issues.update)
 
     return IssueSource.of({
       states: Effect.succeed(states),
@@ -144,11 +159,9 @@ export const GithubIssueSource = Layer.effect(
       updateIssue: Effect.fnUntraced(
         function* (options) {
           if (options.stateId && !states.has(options.stateId)) {
-            return yield* Effect.fail(
-              new IssueSourceError({
-                cause: new Error(`Unknown GitHub stateId: ${options.stateId}`),
-              }),
-            )
+            return yield* new IssueSourceError({
+              cause: new Error(`Unknown GitHub stateId: ${options.stateId}`),
+            })
           }
 
           const update: {
@@ -157,6 +170,7 @@ export const GithubIssueSource = Layer.effect(
             issue_number: number
             title?: string
             body?: string
+            labels?: string[]
             state?: "open" | "closed"
           } = {
             owner,
@@ -167,25 +181,26 @@ export const GithubIssueSource = Layer.effect(
           if (options.title !== undefined) {
             update.title = options.title
           }
-
           if (options.description !== undefined) {
             update.body = options.description
           }
-
           if (options.stateId !== undefined) {
             update.state = options.stateId === "closed" ? "closed" : "open"
+            if (options.stateId === "in-review") {
+              update.labels = ["in-review"]
+            }
           }
 
-          yield* github.wrap((rest) => rest.issues.update)(update)
+          yield* updateIssue(update)
         },
         Effect.mapError((cause) => new IssueSourceError({ cause })),
       ),
       cancelIssue: Effect.fnUntraced(
         function* (issueId: string) {
-          yield* github.wrap((rest) => rest.issues.update)({
+          yield* updateIssue({
             owner,
             repo,
-            issue_number: Number(issueId),
+            issue_number: Number(issueId.slice(1)),
             state: "closed",
           })
         },

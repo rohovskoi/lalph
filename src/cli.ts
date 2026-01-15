@@ -32,7 +32,7 @@ const selectSource = Command.make("source").pipe(
 const planMode = Command.make("plan").pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(() => plan),
-  Command.provide(CurrentIssueSource),
+  Command.provide(CurrentIssueSource.layer),
 )
 
 const iterations = Flag.integer("iterations").pipe(
@@ -170,7 +170,7 @@ const root = Command.make("lalph", {
       yield* FiberSet.awaitEmpty(fibers)
     }, Effect.scoped),
   ),
-  Command.provide(CurrentIssueSource),
+  Command.provide(CurrentIssueSource.layer),
   Command.withSubcommands([planMode, selectSource, selectAgent]),
 )
 

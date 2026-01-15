@@ -1,11 +1,13 @@
 import { Effect, Layer, ServiceMap } from "effect"
 import { PrdIssue } from "./domain/PrdIssue.ts"
 import { IssueSource } from "./IssueSource.ts"
+import { CurrentIssueSource } from "./IssueSources.ts"
 
 export class PromptGen extends ServiceMap.Service<PromptGen>()(
   "lalph/PromptGen",
   {
     make: Effect.gen(function* () {
+      const sourceMeta = yield* CurrentIssueSource
       const source = yield* IssueSource
       const states = yield* source.states
 
@@ -53,15 +55,18 @@ ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
      changes, and address them as part of the task.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
-4. Implement the task.
+4. Research the task. If it seems like too many steps are needed to complete the task,
+   break it down into smaller tasks and add them to the prd.json file, marking the
+   original task as "blocked" or "closed" by updating its \`stateId\`.
+   Otherwise, implement the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
-6. Create or update the pull request with your progress. The title of
-   the PR should include the task id. The PR description should include a
-   summary of the changes made.
+6. Create or update the pull request with your progress.
+   ${sourceMeta.githubPrInstructions}
+   The PR description should include a summary of the changes made.
    - None of the files in the \`.lalph\` directory should be committed.
 7. Update the prd.json file to reflect any changes in task states.
    - Add follow up tasks only if needed.
-   - Append to the \`description\` field with any notes.
+   - Append to the \`description\` field with any notes or important discoveries.
    - If you believe the task is complete, update the \`stateId\` for "review".
      Only if no "review" state exists, use a completed state.
 

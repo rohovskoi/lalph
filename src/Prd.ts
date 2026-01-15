@@ -1,4 +1,5 @@
 import {
+  Array,
   Console,
   Effect,
   FileSystem,
@@ -40,6 +41,8 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       if (!anyChanges) {
         return
       }
+
+      const githubPrs = new Map<string, number>()
       const toRemove = new Set(
         current.filter((i) => i.id !== null).map((i) => i.id!),
       )
@@ -52,6 +55,10 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
           yield* source.createIssue(issue)
           createdIssues++
           continue
+        }
+
+        if (issue.githubPrNumber) {
+          githubPrs.set(issue.id, issue.githubPrNumber)
         }
 
         const existing = current.find((i) => i.id === issue.id)
@@ -80,20 +87,34 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       )
 
       current = yield* source.issues
-      yield* fs.writeFileString(prdFile, PrdIssue.arrayToJson(current))
+      yield* fs.writeFileString(
+        prdFile,
+        PrdIssue.arrayToJson(
+          current.map((issue) => {
+            const prNumber = githubPrs.get(issue.id!)
+            if (!prNumber) return issue
+            return new PrdIssue({ ...issue, githubPrNumber: prNumber })
+          }),
+        ),
+      )
     }).pipe(Console.withTime("Prd.sync"), Effect.uninterruptible)
 
-    const hasMergableIssues = Effect.gen(function* () {
+    const mergableGithubPrs = Effect.gen(function* () {
       const json = yield* fs.readFileString(prdFile)
       const updated = PrdList.fromJson(json)
+      const prs = Array.empty<number>()
       for (const issue of updated) {
         const entry = updatedIssues.get(issue.id ?? "")
-        if (!entry || issue.stateId === entry.originalStateId) {
+        if (
+          !entry ||
+          !issue.githubPrNumber ||
+          issue.stateId === entry.originalStateId
+        ) {
           continue
         }
-        return true
+        prs.push(issue.githubPrNumber)
       }
-      return false
+      return prs
     })
 
     const revertStateIds = Effect.suspend(() =>
@@ -117,7 +138,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       Effect.forkScoped,
     )
 
-    return { path: prdFile, hasMergableIssues, revertStateIds } as const
+    return { path: prdFile, mergableGithubPrs, revertStateIds } as const
   }),
 }) {
   static layer = Layer.effect(this, this.make).pipe(

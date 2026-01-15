@@ -1,31 +1,26 @@
-import { Effect, Layer, Option, Schema, Unify } from "effect"
-import { Setting } from "./Settings.ts"
+import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { Setting, Settings } from "./Settings.ts"
 import { LinearIssueSource, resetLinear } from "./Linear.ts"
 import { Prompt } from "effect/unstable/cli"
 import { GithubIssueSource } from "./Github.ts"
-import { unify } from "effect/Unify"
 import type { IssueSource } from "./IssueSource.ts"
 
-const issueSources = [
+const issueSources: ReadonlyArray<typeof CurrentIssueSource.Service> = [
   {
     id: "linear",
     name: "Linear",
     layer: LinearIssueSource,
     reset: resetLinear,
+    githubPrInstructions: `The title of the PR should include the task id.`,
   },
   {
     id: "github",
     name: "GitHub Issues",
     layer: GithubIssueSource,
     reset: Effect.void,
+    githubPrInstructions: `At the start of your PR description, include a line that closes the issue, like: Closes {task id}.`,
   },
-] as const
-
-type IssueLayer = Layer.Layer<
-  IssueSource,
-  Layer.Error<(typeof issueSources)[number]["layer"]>,
-  Layer.Services<(typeof issueSources)[number]["layer"]>
->
+]
 
 const selectedIssueSource = new Setting(
   "issueSource",
@@ -53,9 +48,29 @@ const getOrSelectIssueSource = Effect.gen(function* () {
   return yield* selectIssueSource
 })
 
-export const CurrentIssueSource = Layer.unwrap(
-  Effect.gen(function* () {
-    const source = yield* getOrSelectIssueSource
-    return source.layer as IssueLayer
-  }),
-)
+export class CurrentIssueSource extends ServiceMap.Service<
+  CurrentIssueSource,
+  {
+    readonly id: string
+    readonly name: string
+    readonly layer: Layer.Layer<
+      IssueSource,
+      Layer.Error<typeof LinearIssueSource | typeof GithubIssueSource>,
+      Layer.Services<typeof LinearIssueSource | typeof GithubIssueSource>
+    >
+    readonly reset: Effect.Effect<void, never, Settings>
+    readonly githubPrInstructions: string
+  }
+>()("lalph/CurrentIssueSource") {
+  static layer = Layer.effectServices(
+    Effect.gen(function* () {
+      const source = yield* getOrSelectIssueSource
+      const services = yield* Layer.buildWithMemoMap(
+        source.layer,
+        yield* Layer.CurrentMemoMap,
+        yield* Effect.scope,
+      )
+      return ServiceMap.add(services, CurrentIssueSource, source)
+    }),
+  )
+}
