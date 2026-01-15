@@ -19,7 +19,6 @@ export const run = Effect.fnUntraced(
     const cliCommand = cliAgent.command({
       prompt: promptGen.prompt,
       prdFilePath: pathService.join(".lalph", "prd.json"),
-      progressFilePath: "PROGRESS.md",
     })
     const handle = yield* ChildProcess.make(
       cliCommand[0]!,

@@ -35,7 +35,6 @@ const planInitial = Effect.fnUntraced(
     const cliCommand = cliAgent.command({
       prompt: promptGen.planPrompt(options.idea),
       prdFilePath: pathService.join(".lalph", "prd.json"),
-      progressFilePath: "PROGRESS.md",
     })
     const exitCode = yield* ChildProcess.make(
       cliCommand[0]!,
@@ -84,7 +83,6 @@ const planFollowup = Effect.gen(function* () {
   const cliCommand = cliAgent.command({
     prompt: promptGen.planPromptFollowup(feedback),
     prdFilePath: pathService.join(".lalph", "prd.json"),
-    progressFilePath: "PROGRESS.md",
   })
   const exitCode = yield* ChildProcess.make(
     cliCommand[0]!,

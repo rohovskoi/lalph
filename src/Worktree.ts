@@ -22,11 +22,6 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
     yield* fs.makeDirectory(pathService.join(directory, ".lalph"), {
       recursive: true,
     })
-    yield* Effect.scoped(
-      fs.open(pathService.join(directory, "PROGRESS.md"), {
-        flag: "a+",
-      }),
-    )
 
     const setupPath = pathService.resolve(pathService.join(".lalph-setup.sh"))
     if (yield* fs.exists(setupPath)) {
