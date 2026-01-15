@@ -223,8 +223,8 @@ export const GithubIssueSource = Layer.effect(
                   repo,
                   issue_number: created.number,
                   issue_id: dependencyNumber,
-                }).pipe(Effect.asVoid),
-              { concurrency: 5 },
+                }),
+              { concurrency: 5, discard: true },
             )
           }
 
