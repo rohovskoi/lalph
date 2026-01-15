@@ -15,7 +15,6 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
       }),
     )
 
-    yield* execIgnore(ChildProcess.make`git pull`)
     yield* ChildProcess.make`git worktree add ${directory} -d HEAD`.pipe(
       ChildProcess.exitCode,
     )
