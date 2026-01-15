@@ -3,6 +3,7 @@ import type { OctokitResponse } from "@octokit/types"
 import {
   Config,
   Data,
+  DateTime,
   Effect,
   Layer,
   Option,
@@ -119,12 +120,27 @@ export const GithubIssueSource = Layer.effect(
         rest.issues.listForRepo({
           owner,
           repo,
-          state: "all",
+          state: "open",
           per_page: 100,
           page,
         }),
       )
       .pipe(
+        Stream.merge(
+          github.stream((rest, page) =>
+            rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "closed",
+              per_page: 100,
+              page,
+              since: DateTime.nowUnsafe().pipe(
+                DateTime.subtract({ days: 3 }),
+                DateTime.formatIso,
+              ),
+            }),
+          ),
+        ),
         Stream.filter((issue) => issue.pull_request === undefined),
         Stream.map(
           (issue) =>
@@ -188,7 +204,7 @@ export const GithubIssueSource = Layer.effect(
           } = {
             owner,
             repo,
-            issue_number: Number(options.issueId),
+            issue_number: Number(options.issueId.slice(1)),
           }
 
           if (options.title !== undefined) {
