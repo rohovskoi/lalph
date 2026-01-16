@@ -44,6 +44,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      yaml:
+        specifier: ^2.8.2
+        version: 2.8.2
 
 packages:
 
@@ -138,7 +141,7 @@ packages:
     hasBin: true
 
   '@effect/platform-node-shared@https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-node-shared@004c047':
-    resolution: {integrity: sha512-JCQgyKY/AnUZmYik8ijxoNIpmxH/EvBtBV+GcIc5gyH7hpDHRyRbKfQP73W4UcuLfY53gDmOAoEbC2PYyFtqvg==, tarball: https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-node-shared@004c047}
+    resolution: {tarball: https://pkg.pr.new/Effect-TS/effect-smol/@effect/platform-node-shared@004c047}
     version: 0.31.6
     engines: {node: '>=18.0.0'}
     peerDependencies:

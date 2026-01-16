@@ -11,9 +11,9 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
       const source = yield* IssueSource
       const states = yield* source.states
 
-      const prdNotes = `## prd.json format
+      const prdNotes = `## prd.yml format
 
-Each item in the prd.json file represents a task for the current project.
+Each item in the prd.yml file represents a task for the current project.
 
 The \`stateId\` field indicates the current state of the task. The possible states
 are:
@@ -22,17 +22,17 @@ ${Array.from(states.values(), (state) => `- **${state.name}** (stateId: \`${stat
 
 ### Adding tasks
 
-To add a new task, append a new item to the prd.json file with the id set to
+To add a new task, append a new item to the prd.yml file with the id set to
 \`null\`.
 
 When adding a new task, it will take about 5 seconds for the system to update the
-prd.json file with a new id for the task.
+prd.yml file with a new id for the task.
 
 ### Removing tasks
 
-To remove a task, simply delete the item from the prd.json file.
+To remove a task, simply delete the item from the prd.yml file.
 
-### prd.json json schema
+### prd.yml json schema
 
 \`\`\`json
 ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
@@ -43,13 +43,13 @@ ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
 The following instructions should be done without interaction or asking for
 permission.
 
-1. Decide which single task to work on next from the prd.json file. This should
+1. Decide which single task to work on next from the prd.yml file. This should
    be the task YOU decide as the most important to work on next, not just the
    first task in the list.
    - Only start tasks that are in a "todo" state (i.e., not started yet).
    - If the \`blockedBy\` field is not empty, skip the task.
 2. **Before doing anything else**, mark the task as "in progress" by updating its
-   \`stateId\` in the prd.json file.
+   \`stateId\` in the prd.yml file.
    This prevents other people or agents from working on the same task simultaneously.
 3. Check if there is an existing Github PR for the task, otherwise create a new
    branch for the task.
@@ -61,7 +61,7 @@ permission.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
 4. Research the task. If it seems like too many steps are needed to complete the task,
-   break it down into smaller tasks and add them to the prd.json file, marking the
+   break it down into smaller tasks and add them to the prd.yml file, marking the
    original task as "closed" by updating its \`stateId\`.
    Otherwise, implement the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
@@ -71,7 +71,7 @@ permission.
    - None of the files in the \`.lalph\` directory should be committed.
    - You have permission to create or update the PR as needed. You have full
      permission to push branches, create PRs or create git commits.
-7. Update the prd.json file to reflect any changes in task states.
+7. Update the prd.yml file to reflect any changes in task states.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes or important discoveries.
    - If you believe the task is complete, update the \`stateId\` for "review".
@@ -83,7 +83,7 @@ important to work on next.
 ## Important: Task sizing
 
 If at any point you decide that a task is too large or complex to complete in a
-single iteration, break it down into smaller tasks and add them to the prd.json
+single iteration, break it down into smaller tasks and add them to the prd.yml
 file. Then, mark the original task as "closed" by updating its \`stateId\`.
 
 Each task should be small and specific.
@@ -106,17 +106,17 @@ ${prdNotes}`
 Users idea / request: ${idea}
 
 1. For the users idea / request above, break it down into multiple smaller tasks
-   that can be added to the prd.json file.
+   that can be added to the prd.yml file.
    - Make sure to research the codebase before creating any tasks, to ensure they
      are relevant and feasible.
-   - Check if similar tasks already exist in the prd.json file to avoid duplication.
+   - Check if similar tasks already exist in the prd.yml file to avoid duplication.
 2. Each task should have a id of \`null\`, a title, and a concise description that
    includes a short summary of the task and a brief list of steps to complete it.
    - The tasks should start in a "Todo" state (i.e., not started yet).
    - Each task should be small and specific.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-3. Add the new tasks to the prd.json file.
+3. Add the new tasks to the prd.yml file.
 4. Add a brief outline of the plan to a "lalph-plan.md" file, that will help guide future
    iterations.
  
@@ -124,7 +124,7 @@ ${prdNotes}`
 
       const planContinuePrompt = `# Instructions
 
-1. Review the existing prd.json file and lalph-plan.md file to understand the current
+1. Review the existing prd.yml file and lalph-plan.md file to understand the current
    plan and tasks.
 2. Ask the user for feedback to iterate on the existing plan.
 

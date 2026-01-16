@@ -1,4 +1,5 @@
-import { Schema, Data, Array, Equal } from "effect"
+import { Schema, Array, Equal } from "effect"
+import * as Yaml from "yaml"
 
 export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
   id: Schema.NullOr(Schema.String).annotate({
@@ -36,12 +37,14 @@ export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
 }) {
   static Array = Schema.Array(this)
   static ArrayFromJson = Schema.toCodecJson(this.Array)
-  static arrayToJson(issues: ReadonlyArray<PrdIssue>): string {
-    return JSON.stringify(
-      Schema.encodeSync(this.ArrayFromJson)(issues),
-      null,
-      2,
-    )
+  static arrayToYaml(issues: ReadonlyArray<PrdIssue>): string {
+    const json = Schema.encodeSync(this.ArrayFromJson)(issues)
+    return Yaml.stringify(json, { blockQuote: "literal" })
+  }
+  static arrayFromYaml(yaml: string): ReadonlyArray<PrdIssue> {
+    const json = Yaml.parse(yaml)
+    const issues = Schema.decodeSync(PrdIssue.ArrayFromJson)(json)
+    return issues
   }
 
   static jsonSchemaDoc = Schema.toJsonSchemaDocument(this)
@@ -60,24 +63,5 @@ export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
         issue.blockedBy,
       )
     )
-  }
-}
-
-export class PrdList<O = unknown> extends Data.Class<{
-  readonly issues: ReadonlyMap<string, PrdIssue>
-  readonly orignals: ReadonlyMap<string, O>
-}> {
-  static fromJson(json: string): ReadonlyArray<PrdIssue> {
-    const issues = Schema.decodeSync(PrdIssue.ArrayFromJson)(JSON.parse(json))
-    return issues
-  }
-
-  toJson(): string {
-    const issuesArray = Array.fromIterable(this.issues.values())
-    return PrdIssue.arrayToJson(issuesArray)
-  }
-
-  cast<T>(): PrdList<T> {
-    return this as any
   }
 }

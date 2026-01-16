@@ -9,7 +9,7 @@ import {
   Stream,
 } from "effect"
 import { Worktree } from "./Worktree.ts"
-import { PrdIssue, PrdList } from "./domain/PrdIssue.ts"
+import { PrdIssue } from "./domain/PrdIssue.ts"
 import { IssueSource } from "./IssueSource.ts"
 
 export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
@@ -20,10 +20,10 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     const source = yield* IssueSource
 
     const lalphDir = pathService.join(worktree.directory, `.lalph`)
-    const prdFile = pathService.join(worktree.directory, `.lalph`, `prd.json`)
+    const prdFile = pathService.join(worktree.directory, `.lalph`, `prd.yml`)
 
     let current = yield* source.issues
-    yield* fs.writeFileString(prdFile, PrdIssue.arrayToJson(current))
+    yield* fs.writeFileString(prdFile, PrdIssue.arrayToYaml(current))
 
     const updatedIssues = new Map<
       string,
@@ -45,8 +45,8 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     )
 
     const sync = Effect.gen(function* () {
-      const json = yield* fs.readFileString(prdFile)
-      const updated = PrdList.fromJson(json)
+      const yaml = yield* fs.readFileString(prdFile)
+      const updated = PrdIssue.arrayFromYaml(yaml)
       const anyChanges =
         updated.length !== current.length ||
         updated.some((u, i) => u.isChangedComparedTo(current[i]!))
@@ -101,7 +101,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       current = yield* source.issues
       yield* fs.writeFileString(
         prdFile,
-        PrdIssue.arrayToJson(
+        PrdIssue.arrayToYaml(
           current.map((issue) => {
             const prNumber = githubPrs.get(issue.id!)
             if (!prNumber) return issue
@@ -112,8 +112,8 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     }).pipe(Effect.uninterruptible)
 
     const mergableGithubPrs = Effect.gen(function* () {
-      const json = yield* fs.readFileString(prdFile)
-      const updated = PrdList.fromJson(json)
+      const yaml = yield* fs.readFileString(prdFile)
+      const updated = PrdIssue.arrayFromYaml(yaml)
       const prs = Array.empty<number>()
       for (const issue of updated) {
         const entry = updatedIssues.get(issue.id ?? "")

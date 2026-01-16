@@ -22,7 +22,7 @@ export const plan = Effect.gen(function* () {
 
   const cliCommand = cliAgent.commandPlan({
     prompt: promptGen.planPrompt(idea),
-    prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.json"),
+    prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.yml"),
   })
   const exitCode = yield* ChildProcess.make(
     cliCommand[0]!,
@@ -60,7 +60,7 @@ export const planContinue = Effect.gen(function* () {
 
   const cliCommand = cliAgent.commandPlan({
     prompt: promptGen.planContinuePrompt,
-    prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.json"),
+    prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.yml"),
   })
   const exitCode = yield* ChildProcess.make(
     cliCommand[0]!,
