@@ -25,29 +25,6 @@
             nodejs
           ];
         };
-
-        # The Docker image package
-        packages.lalph = pkgs.dockerTools.buildImage {
-          name = "lalph-image";
-          tag = "latest";
-          copyToRoot = pkgs.buildEnv {
-            name = "image-root";
-            paths = with pkgs; [
-              claude-code
-              curl
-              direnv
-              fd
-              gnumake
-              gnused
-              gnugrep
-              nodejs
-              opencode
-              ripgrep
-              wget
-            ];
-            pathsToLink = ["/bin"];
-          };
-        };
       }
     );
 }

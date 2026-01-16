@@ -17,18 +17,14 @@ export const opencode = new CliAgent({
   id: "opencode",
   name: "opencode",
   command: ({ prompt, prdFilePath }) => [
-    "npx",
-    "-y",
-    "opencode-ai@latest",
+    "opencode",
     "run",
     prompt,
     "-f",
     prdFilePath,
   ],
   commandPlan: ({ prompt, prdFilePath }) => [
-    "npx",
-    "-y",
-    "opencode-ai@latest",
+    "opencode",
     "--prompt",
     `@${prdFilePath}
 
@@ -40,18 +36,14 @@ export const claude = new CliAgent({
   id: "claude",
   name: "Claude Code",
   command: ({ prompt, prdFilePath }) => [
-    "npx",
-    "-y",
-    "@anthropic-ai/claude-code@latest",
+    "claude",
     "-p",
     `@${prdFilePath}
 
 ${prompt}`,
   ],
   commandPlan: ({ prompt, prdFilePath }) => [
-    "npx",
-    "-y",
-    "@anthropic-ai/claude-code@latest",
+    "claude",
     `@${prdFilePath}
 
 ${prompt}`,
