@@ -1,4 +1,12 @@
-import { Effect, Stream, Layer, Schema, ServiceMap, Option } from "effect"
+import {
+  Effect,
+  Stream,
+  Layer,
+  Schema,
+  ServiceMap,
+  Option,
+  RcMap,
+} from "effect"
 import {
   Connection,
   Issue,
@@ -16,16 +24,28 @@ import { PrdIssue } from "./domain/PrdIssue.ts"
 class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
   make: Effect.gen(function* () {
     const tokens = yield* TokenManager
-
-    const client = new LinearClient({
-      accessToken: (yield* tokens.get).token,
+    const clients = yield* RcMap.make({
+      lookup: (token: string) =>
+        Effect.succeed(new LinearClient({ accessToken: token })),
+      idleTimeToLive: "1 minute",
     })
+    const getClient = tokens.get.pipe(
+      Effect.flatMap(({ token }) => RcMap.get(clients, token)),
+      Effect.mapError((cause) => new LinearError({ cause })),
+    )
 
-    const use = <A>(f: (client: LinearClient) => Promise<A>) =>
-      Effect.tryPromise({
-        try: () => f(client),
-        catch: (cause) => new LinearError({ cause }),
-      })
+    const use = <A>(
+      f: (client: LinearClient) => Promise<A>,
+    ): Effect.Effect<A, LinearError> =>
+      getClient.pipe(
+        Effect.flatMap((client) =>
+          Effect.tryPromise({
+            try: () => f(client),
+            catch: (cause) => new LinearError({ cause }),
+          }),
+        ),
+        Effect.scoped,
+      )
 
     const stream = <A>(f: (client: LinearClient) => Promise<Connection<A>>) =>
       Stream.paginate(

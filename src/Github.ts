@@ -7,6 +7,7 @@ import {
   Layer,
   Option,
   pipe,
+  RcMap,
   Schema,
   ServiceMap,
   Stream,
@@ -27,17 +28,25 @@ export class GithubError extends Data.TaggedError("GithubError")<{
 export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
   make: Effect.gen(function* () {
     const tokens = yield* TokenManager
-    const octokit = new Octokit({ auth: (yield* tokens.get).token })
-
-    const rest = octokit.rest
+    const clients = yield* RcMap.make({
+      lookup: (token: string) => Effect.succeed(new Octokit({ auth: token })),
+      idleTimeToLive: "1 minute",
+    })
+    const getClient = tokens.get.pipe(
+      Effect.flatMap(({ token }) => RcMap.get(clients, token)),
+      Effect.mapError((cause) => new GithubError({ cause })),
+    )
 
     const request = <A>(f: (_: Api["rest"]) => Promise<A>) =>
-      Effect.withSpan(
-        Effect.tryPromise({
-          try: () => f(rest as any),
-          catch: (cause) => new GithubError({ cause }),
-        }),
-        "Github.request",
+      getClient.pipe(
+        Effect.flatMap((rest) =>
+          Effect.tryPromise({
+            try: () => f(rest as any),
+            catch: (cause) => new GithubError({ cause }),
+          }),
+        ),
+        Effect.scoped,
+        Effect.withSpan("Github.request"),
       )
 
     const wrap =
@@ -45,24 +54,33 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
         f: (_: Api["rest"]) => (...args: Args) => Promise<OctokitResponse<A>>,
       ) =>
       (...args: Args) =>
-        Effect.map(
-          Effect.tryPromise({
-            try: () => f(rest as any)(...args),
-            catch: (cause) => new GithubError({ cause }),
-          }),
-          (_) => _.data,
+        getClient.pipe(
+          Effect.flatMap((rest) =>
+            Effect.tryPromise({
+              try: () => f(rest as any)(...args),
+              catch: (cause) => new GithubError({ cause }),
+            }),
+          ),
+          Effect.scoped,
+          Effect.map((_) => _.data),
+          Effect.withSpan("Github.wrap"),
         )
 
     const stream = <A>(
       f: (_: Api["rest"], page: number) => Promise<OctokitResponse<Array<A>>>,
     ) =>
       Stream.paginate(0, (page) =>
-        Effect.map(
-          Effect.tryPromise({
-            try: () => f(rest as any, page),
-            catch: (cause) => new GithubError({ cause }),
-          }),
-          (_) => [_.data, maybeNextPage(page, _.headers.link)],
+        getClient.pipe(
+          Effect.flatMap((rest) =>
+            Effect.tryPromise({
+              try: () => f(rest as any, page),
+              catch: (cause) => new GithubError({ cause }),
+            }),
+          ),
+          Effect.scoped,
+          Effect.map(
+            (_) => [_.data, maybeNextPage(page, _.headers.link)] as const,
+          ),
         ),
       )
 
