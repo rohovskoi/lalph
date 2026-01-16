@@ -64,6 +64,8 @@ ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
    ${sourceMeta.githubPrInstructions}
    The PR description should include a summary of the changes made.
    - None of the files in the \`.lalph\` directory should be committed.
+   - You have permission to create or update the PR as needed. No need to ask for
+     permission to push branches or create PRs.
 7. Update the prd.json file to reflect any changes in task states.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes or important discoveries.
