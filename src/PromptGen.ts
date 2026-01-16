@@ -56,6 +56,8 @@ permission.
    - If there is an existing PR, checkout the branch for that PR.
    - If there is an existing PR, check if there are any new comments or requested
      changes, and address them as part of the task.
+   - If creating a new branch, don't checkout any main branches first, use the current
+     HEAD as the base.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
 4. Research the task. If it seems like too many steps are needed to complete the task,
