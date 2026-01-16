@@ -161,6 +161,9 @@ export const LinearIssueSource = Layer.effect(
                 Option.getOrNull,
               ),
             },
+            completedAt: {
+              gte: "-P3D",
+            },
             state: {
               type: { in: ["unstarted", "started", "completed"] },
             },
