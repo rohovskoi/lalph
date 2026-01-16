@@ -17,6 +17,9 @@ export const plan = Effect.gen(function* () {
     message: "Enter the idea / request:",
   })
 
+  const lalphPlanPath = pathService.join(worktree.directory, "lalph-plan.md")
+  yield* Effect.scoped(fs.open(lalphPlanPath, { flag: "a+" }))
+
   const cliCommand = cliAgent.commandPlan({
     prompt: promptGen.planPrompt(idea),
     prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.json"),
@@ -38,10 +41,7 @@ export const plan = Effect.gen(function* () {
 
   yield* Effect.log(`Agent exited with code: ${exitCode}`)
 
-  const planContent = yield* fs
-    .readFileString(pathService.join(worktree.directory, "lalph-plan.md"))
-    .pipe(Effect.orElseSucceed(() => ""))
-
+  const planContent = yield* fs.readFileString(lalphPlanPath)
   yield* fs.writeFileString(pathService.resolve("lalph-plan.md"), planContent)
 }).pipe(
   Effect.scoped,
