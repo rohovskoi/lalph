@@ -46,7 +46,7 @@ permission.
 1. Decide which single task to work on next from the prd.json file. This should
    be the task YOU decide as the most important to work on next, not just the
    first task in the list.
-   - If a task is already completed or in review, skip it.
+   - Only start tasks that are in a "todo" state (i.e., not started yet).
    - If the \`blockedBy\` field is not empty, skip the task.
 2. **Before doing anything else**, mark the task as "in progress" by updating its
    \`stateId\` in the prd.json file.
@@ -60,7 +60,7 @@ permission.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
 4. Research the task. If it seems like too many steps are needed to complete the task,
    break it down into smaller tasks and add them to the prd.json file, marking the
-   original task as "blocked" or "closed" by updating its \`stateId\`.
+   original task as "closed" by updating its \`stateId\`.
    Otherwise, implement the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 6. Create or update the pull request with your progress.
@@ -82,8 +82,7 @@ important to work on next.
 
 If at any point you decide that a task is too large or complex to complete in a
 single iteration, break it down into smaller tasks and add them to the prd.json
-file. Then, mark the original task as "blocked" or "deferred" by updating its
-\`stateId\`.
+file. Then, mark the original task as "closed" by updating its \`stateId\`.
 
 Each task should be small and specific.
 Instead of creating tasks like "Refactor the authentication system", create

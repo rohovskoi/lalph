@@ -180,7 +180,7 @@ export const LinearIssueSource = Layer.effect(
               priority: issue.priority,
               estimate: issue.estimate ?? null,
               stateId: issue.stateId!,
-              complete: state.type !== "unstarted",
+              complete: state.type === "completed",
               blockedBy: blockedBy.map((i) => i.identifier),
               githubPrNumber: null,
             })
