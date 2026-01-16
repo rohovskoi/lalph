@@ -69,8 +69,8 @@ permission.
    ${sourceMeta.githubPrInstructions}
    The PR description should include a summary of the changes made.
    - None of the files in the \`.lalph\` directory should be committed.
-   - You have permission to create or update the PR as needed. No need to ask for
-     permission to push branches or create PRs.
+   - You have permission to create or update the PR as needed. You have full
+     permission to push branches, create PRs or create git commits.
 7. Update the prd.json file to reflect any changes in task states.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes or important discoveries.
