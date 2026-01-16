@@ -56,35 +56,36 @@ class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
     )
     const viewer = yield* use((client) => client.viewer)
 
-    const blockedBy = (issue: Issue) =>
+    const blockedByRelations = (issue: Issue) =>
       stream(() => issue.relations()).pipe(
+        Stream.merge(stream(() => issue.inverseRelations())),
         Stream.filter(
           (relation) =>
             relation.type === "blocks" && relation.relatedIssueId === issue.id,
         ),
+      )
+
+    const blockedBy = (issue: Issue) =>
+      blockedByRelations(issue).pipe(
         Stream.mapEffect((relation) => use(() => relation.issue!), {
           concurrency: "unbounded",
         }),
-        Stream.merge(
-          stream(() => issue.inverseRelations()).pipe(
-            Stream.filter(
-              (relation) =>
-                relation.type === "blocks" &&
-                relation.relatedIssueId === issue.id,
-            ),
-            Stream.mapEffect((relation) => use(() => relation.issue!), {
-              concurrency: "unbounded",
-            }),
-          ),
-        ),
         Stream.filter((issue) => {
           const state = states.get(issue.stateId!)!
           return state.type !== "completed"
         }),
-        Stream.runCollect,
       )
 
-    return { use, stream, projects, labels, states, viewer, blockedBy } as const
+    return {
+      use,
+      stream,
+      projects,
+      labels,
+      states,
+      viewer,
+      blockedBy,
+      blockedByRelations,
+    } as const
   }),
 }) {
   static layer = Layer.effect(this, this.make).pipe(
@@ -151,7 +152,7 @@ export const LinearIssueSource = Layer.effect(
           Effect.fnUntraced(function* (issue) {
             identifierMap.set(issue.identifier, issue.id)
             const state = linear.states.get(issue.stateId!)!
-            const blockedBy = yield* linear.blockedBy(issue)
+            const blockedBy = yield* Stream.runCollect(linear.blockedBy(issue))
             return new PrdIssue({
               id: issue.identifier,
               title: issue.title,
@@ -220,12 +221,37 @@ export const LinearIssueSource = Layer.effect(
           delete update.issueId
           delete update.blockedBy
           yield* linear.use((c) => c.updateIssue(issueId, update))
-          if (!options.blockedBy || options.blockedBy.length === 0) return
+          if (!options.blockedBy) return
+
+          const blockedBy = options.blockedBy.flatMap((identifier) => {
+            const blockerIssueId = identifierMap.get(identifier)
+            return blockerIssueId ? [blockerIssueId] : []
+          })
+
+          const linearIssue = yield* linear.use((c) => c.issue(issueId))
+          const existingRelations = yield* Stream.runCollect(
+            linear.blockedByRelations(linearIssue),
+          )
+          const existingBlockers = new Map(
+            existingRelations.map((relation) => [
+              relation.issueId!,
+              relation.id,
+            ]),
+          )
+
+          const toAdd = blockedBy.filter(
+            (blockerIssueId) => !existingBlockers.has(blockerIssueId),
+          )
+          const toRemove = existingRelations.filter(
+            (relation) => !blockedBy.includes(relation.issueId!),
+          )
+
+          if (toAdd.length === 0 && toRemove.length === 0) return
+
           yield* Effect.forEach(
-            options.blockedBy,
-            (identifier) => {
-              const blockerIssueId = identifierMap.get(identifier)!
-              return linear
+            toAdd,
+            (blockerIssueId) =>
+              linear
                 .use((c) =>
                   c.createIssueRelation({
                     issueId: blockerIssueId,
@@ -233,8 +259,16 @@ export const LinearIssueSource = Layer.effect(
                     type: IssueRelationType.Blocks,
                   }),
                 )
-                .pipe(Effect.ignore)
-            },
+                .pipe(Effect.ignore),
+            { concurrency: 5 },
+          )
+
+          yield* Effect.forEach(
+            toRemove,
+            (relation) =>
+              linear
+                .use((c) => c.deleteIssueRelation(relation.id))
+                .pipe(Effect.ignore),
             { concurrency: 5 },
           )
         },
