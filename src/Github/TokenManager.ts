@@ -78,7 +78,7 @@ export class TokenManager extends ServiceMap.Service<TokenManager>()(
         console.log("Go to:", code.verification_uri)
         console.log("and enter code:", code.user_code)
 
-        const poll = HttpClientRequest.post(
+        const tokenResponse = yield* HttpClientRequest.post(
           "https://github.com/login/oauth/access_token",
         ).pipe(
           HttpClientRequest.bodyUrlParams({
@@ -88,29 +88,11 @@ export class TokenManager extends ServiceMap.Service<TokenManager>()(
           }),
           httpClient.execute,
           Effect.flatMap(HttpClientResponse.schemaBodyUrlParams(PollResponse)),
+          Effect.delay(Duration.seconds(code.interval)),
+          Effect.repeat({
+            until: (res) => "access_token" in res,
+          }),
         )
-
-        const pollLoop: Effect.Effect<
-          {
-            readonly access_token: string
-            readonly token_type: string
-            readonly expires_in: number
-            readonly refresh_token: string
-            readonly scope: string
-          },
-          HttpClientError.HttpClientError | Schema.SchemaError
-        > = poll.pipe(
-          Effect.flatMap((res) =>
-            "access_token" in res
-              ? Effect.succeed(res)
-              : pollLoop.pipe(
-                  Effect.delay(Duration.seconds(code.interval + 1)),
-                ),
-          ),
-        )
-
-        yield* Effect.sleep(Duration.seconds(1))
-        const tokenResponse = yield* pollLoop
 
         return AccessToken.fromResponse(tokenResponse)
       })
