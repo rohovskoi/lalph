@@ -80,7 +80,7 @@ single iteration, break it down into smaller tasks and add them to the prd.json
 file. Then, mark the original task as "blocked" or "deferred" by updating its
 \`stateId\`.
 
-Each task should be small and take a hour or less to complete.
+Each task should be small and specific.
 Instead of creating tasks like "Refactor the authentication system", create
 smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 
@@ -107,7 +107,7 @@ Users idea / request: ${idea}
 2. Each task should have a id of \`null\`, a title, and a concise description that
    includes a short summary of the task and a brief list of steps to complete it.
    - The tasks should start in a "Todo" state (i.e., not started yet).
-   - Each task should be small and take a hour or less to complete.
+   - Each task should be small and specific.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 3. Add the new tasks to the prd.json file.
@@ -127,7 +127,7 @@ ${prdNotes}`
 - Each task should have a id of \`null\`, a title, and a concise description that
   includes a short summary of the task and a brief list of steps to complete it.
   - The tasks should start in a "Todo" state (i.e., not started yet).
-  - Each task should be small and take a hour or less to complete.
+  - Each task should be small and specific.
     Instead of creating tasks like "Refactor the authentication system", create
     smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 - Add / update the brief outline of the plan in the "lalph-plan.md" file, that will help guide future
