@@ -1,6 +1,7 @@
 import {
   Data,
   DateTime,
+  Deferred,
   Duration,
   Effect,
   FileSystem,
@@ -17,6 +18,7 @@ import { getOrSelectCliAgent } from "./CliAgent.ts"
 
 export const run = Effect.fnUntraced(
   function* (options: {
+    readonly startedDeferred: Deferred.Deferred<void>
     readonly autoMerge: boolean
     readonly targetBranch: Option.Option<string>
     readonly stallTimeout: Duration.Duration
@@ -45,12 +47,20 @@ export const run = Effect.fnUntraced(
       stdout: "inherit",
       stderr: "inherit",
       stdin: "inherit",
-    }).pipe(ChildProcess.exitCode)
+    }).pipe(
+      ChildProcess.exitCode,
+      Effect.timeoutOrElse({
+        duration: options.stallTimeout,
+        onTimeout: () => Effect.fail(new RunnerStalled()),
+      }),
+    )
 
     const taskJson = yield* fs.readFileString(
       pathService.join(worktree.directory, ".lalph", "task.json"),
     )
     const task = yield* Schema.decodeEffect(ChosenTask)(taskJson)
+
+    yield* Deferred.completeWith(options.startedDeferred, Effect.void)
 
     const cliCommand = cliAgent.command({
       prompt: promptGen.prompt({

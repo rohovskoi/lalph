@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
 import { Command, Flag } from "effect/unstable/cli"
-import { Cause, Duration, Effect, FiberSet, Filter, Layer } from "effect"
+import {
+  Cause,
+  Deferred,
+  Duration,
+  Effect,
+  FiberSet,
+  Filter,
+  Layer,
+} from "effect"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Settings } from "./Settings.ts"
 import { run } from "./Runner.ts"
-import { RateLimiter } from "effect/unstable/persistence"
 import { plan, planContinue } from "./Planner.ts"
 import { getOrSelectCliAgent, selectCliAgent } from "./CliAgent.ts"
 import { CurrentIssueSource, selectIssueSource } from "./IssueSources.ts"
@@ -93,7 +100,6 @@ const root = Command.make("lalph", {
       const iterationsDisplay = isFinite ? iterations : "unlimited"
       const runConcurrency = Math.max(1, concurrency)
       const semaphore = Effect.makeSemaphoreUnsafe(runConcurrency)
-      const limiter = yield* RateLimiter.makeSleep
       const fibers = yield* FiberSet.make()
 
       yield* Effect.log(
@@ -101,7 +107,6 @@ const root = Command.make("lalph", {
       )
 
       let iteration = 0
-      let inProgress = 0
       let quit = false
 
       while (true) {
@@ -112,20 +117,12 @@ const root = Command.make("lalph", {
 
         const currentIteration = iteration
 
-        if (inProgress > 0) {
-          yield* limiter({
-            key: "lalph-runner",
-            algorithm: "fixed-window",
-            limit: 1,
-            window: "30 seconds",
-          })
-        }
-
-        inProgress++
+        const startedDeferred = yield* Deferred.make<void>()
 
         yield* checkForWork.pipe(
           Effect.andThen(
             run({
+              startedDeferred,
               autoMerge,
               targetBranch,
               stallTimeout: Duration.minutes(stallMinutes),
@@ -161,14 +158,13 @@ const root = Command.make("lalph", {
           Effect.annotateLogs({
             iteration: currentIteration,
           }),
-          Effect.ensuring(
-            Effect.suspend(() => {
-              inProgress--
-              return semaphore.release(1)
-            }),
-          ),
+          Effect.ensuring(semaphore.release(1)),
+          Effect.ensuring(Deferred.completeWith(startedDeferred, Effect.void)),
           FiberSet.run(fibers),
         )
+
+        yield* Deferred.await(startedDeferred)
+
         iteration++
       }
 
@@ -187,11 +183,6 @@ const root = Command.make("lalph", {
 Command.run(root, {
   version: "0.1.0",
 }).pipe(
-  Effect.provide(
-    Layer.mergeAll(
-      Settings.layer,
-      RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory)),
-    ).pipe(Layer.provideMerge(NodeServices.layer)),
-  ),
+  Effect.provide(Settings.layer.pipe(Layer.provideMerge(NodeServices.layer))),
   NodeRuntime.runMain,
 )
