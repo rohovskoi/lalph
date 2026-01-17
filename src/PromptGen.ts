@@ -139,8 +139,8 @@ Users idea / request: ${idea}
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 3. Add the new tasks to the prd.yml file.
-4. Add a brief outline of the plan to a "lalph-plan.md" file, that will help guide future
-   iterations.
+4. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
+5. Add a brief outline of the plan to a "lalph-plan.md" file, that will help guide future iterations.
  
 ${prdNotes}`
 
