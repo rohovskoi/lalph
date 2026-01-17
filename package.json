@@ -9,7 +9,7 @@
     "lalph": "./dist/cli.mjs"
   },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "husky && effect-language-service patch",
     "check": "tsc --noEmit && prettier --check . && oxlint -c .oxlintrc.json",
     "build": "tsdown"
   },
