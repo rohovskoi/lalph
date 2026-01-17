@@ -285,7 +285,11 @@ export const LinearIssueSource = Layer.effect(
       updateIssue: Effect.fnUntraced(
         function* (options) {
           const issueId = identifierMap.get(options.issueId)!
-          const update = {} as any
+          const update: {
+            title?: string
+            description?: string
+            stateId?: string
+          } = {}
           if (options.title) {
             update.title = options.title
           }

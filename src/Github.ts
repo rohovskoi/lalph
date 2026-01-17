@@ -29,7 +29,8 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
   make: Effect.gen(function* () {
     const tokens = yield* TokenManager
     const clients = yield* RcMap.make({
-      lookup: (token: string) => Effect.succeed(new Octokit({ auth: token })),
+      lookup: (token: string) =>
+        Effect.succeed(new Octokit({ auth: token }) as unknown as Api["rest"]),
       idleTimeToLive: "1 minute",
     })
     const getClient = tokens.get.pipe(
@@ -41,7 +42,7 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
       getClient.pipe(
         Effect.flatMap((rest) =>
           Effect.tryPromise({
-            try: () => f(rest as any),
+            try: () => f(rest),
             catch: (cause) => new GithubError({ cause }),
           }),
         ),
@@ -50,14 +51,14 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
       )
 
     const wrap =
-      <A, Args extends Array<any>>(
+      <A, Args extends Array<unknown>>(
         f: (_: Api["rest"]) => (...args: Args) => Promise<OctokitResponse<A>>,
       ) =>
       (...args: Args) =>
         getClient.pipe(
           Effect.flatMap((rest) =>
             Effect.tryPromise({
-              try: () => f(rest as any)(...args),
+              try: () => f(rest)(...args),
               catch: (cause) => new GithubError({ cause }),
             }),
           ),
@@ -73,7 +74,7 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
         getClient.pipe(
           Effect.flatMap((rest) =>
             Effect.tryPromise({
-              try: () => f(rest as any, page),
+              try: () => f(rest, page),
               catch: (cause) => new GithubError({ cause }),
             }),
           ),

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-explicit-any
 import { Cache, Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { KeyValueStore } from "effect/unstable/persistence"
 import { layerKvs } from "./Kvs.ts"
