@@ -44,6 +44,7 @@ export const run = Effect.fnUntraced(
     yield* ChildProcess.make(chooseCommand[0]!, chooseCommand.slice(1), {
       cwd: worktree.directory,
       extendEnv: true,
+      env: cliAgent.env,
       stdout: "inherit",
       stderr: "inherit",
       stdin: "inherit",
@@ -75,6 +76,7 @@ export const run = Effect.fnUntraced(
       {
         cwd: worktree.directory,
         extendEnv: true,
+        env: cliAgent.env,
         stdout: "pipe",
         stderr: "pipe",
         stdin: "inherit",
