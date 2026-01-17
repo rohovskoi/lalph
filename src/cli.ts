@@ -13,7 +13,7 @@ import {
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Settings } from "./Settings.ts"
 import { run } from "./Runner.ts"
-import { plan, planContinue } from "./Planner.ts"
+import { plan } from "./Planner.ts"
 import { getOrSelectCliAgent, selectCliAgent } from "./CliAgent.ts"
 import { CurrentIssueSource, selectIssueSource } from "./IssueSources.ts"
 import { checkForWork } from "./IssueSource.ts"
@@ -31,12 +31,6 @@ const selectSource = Command.make("source").pipe(
 const planMode = Command.make("plan").pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(() => plan),
-  Command.provide(CurrentIssueSource.layer),
-)
-
-const planModeContinue = Command.make("plan-continue").pipe(
-  Command.withDescription("Iterate on an issue plan and create PRD tasks"),
-  Command.withHandler(() => planContinue),
   Command.provide(CurrentIssueSource.layer),
 )
 
@@ -172,12 +166,7 @@ const root = Command.make("lalph", {
     }, Effect.scoped),
   ),
   Command.provide(CurrentIssueSource.layer),
-  Command.withSubcommands([
-    planMode,
-    planModeContinue,
-    selectSource,
-    selectAgent,
-  ]),
+  Command.withSubcommands([planMode, selectSource, selectAgent]),
 )
 
 Command.run(root, {

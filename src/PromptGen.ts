@@ -123,10 +123,11 @@ task back to "todo" state with notes on why in the description.
 
 ${prdNotes}`
 
-      const planPrompt = () => `# Instructions
+      const planPrompt = `# Instructions
 
 1. Ask the user for the idea / request, then break it down into multiple smaller tasks
-   that can be added to the prd.yml file.
+   that can be added to the prd.yml file. If a plan already exists in "lalph-plan.md",
+   then your job is to iterate on the existing plan by updating the existing tasks.
    - Make sure to research the codebase before creating any tasks, to ensure they
      are relevant and feasible.
    - Check if similar tasks already exist in the prd.yml file to avoid duplication.
@@ -138,30 +139,13 @@ ${prdNotes}`
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 3. Add the new tasks to the prd.yml file.
 4. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
-5. Add a brief outline of the plan to a "lalph-plan.md" file, that will help guide future iterations.
+5. Add a outline of the plan to a "lalph-plan.md" file, that will help guide future iterations.
+
+**Important:** You are only creating or updating the plan, not implementing any tasks yet.
  
 ${prdNotes}`
 
-      const planContinuePrompt = `# Instructions
-
-1. Review the existing prd.yml file and lalph-plan.md file to understand the current
-   plan and tasks.
-2. Ask the user for feedback to iterate on the existing plan.
-
-## Creating / updating tasks
-
-- Each task should have a id of \`null\`, a title, and a concise description that
-  includes a short summary of the task and a brief list of steps to complete it.
-  - The tasks should start in a "todo" state.
-  - Each task should be small and specific.
-    Instead of creating tasks like "Refactor the authentication system", create
-    smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-- Add / update the brief outline of the plan in the "lalph-plan.md" file, that will help guide future
-  iterations.
- 
-${prdNotes}`
-
-      return { promptChoose, prompt, planPrompt, planContinuePrompt } as const
+      return { promptChoose, prompt, planPrompt } as const
     }),
   },
 ) {
