@@ -11,7 +11,9 @@ export class PromptGen extends ServiceMap.Service<PromptGen>()(
       const source = yield* IssueSource
       const states = yield* source.states
 
-      const prdNotes = `## prd.yml format
+      const prdNotes = `## prd.yml file
+
+**Important:** Wait 5 seconds between edits to allow the system to update the prd.yml file.
 
 Each item in the prd.yml file represents a task for the current project.
 
