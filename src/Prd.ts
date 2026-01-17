@@ -137,11 +137,30 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       })
     })
 
+    const mergeConflictInstruction =
+      "Please rebase and resolve merge conflicts before continuing."
+
+    const flagUnmergable = Effect.fnUntraced(function* (options: {
+      readonly issueId: string
+    }) {
+      const issue = current.find((entry) => entry.id === options.issueId)
+      if (!issue) return
+      if (issue.description.includes(mergeConflictInstruction)) return
+
+      const nextDescription = `${issue.description.trimEnd()}\n\n${mergeConflictInstruction}`
+
+      yield* source.updateIssue({
+        issueId: issue.id!,
+        description: nextDescription,
+      })
+    })
+
     return {
       path: prdFile,
       mergableGithubPrs,
       revertStateIds,
       maybeRevertIssue,
+      flagUnmergable,
     } as const
   }),
 }) {
