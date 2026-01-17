@@ -51,14 +51,12 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       const toRemove = new Set(
         current.filter((i) => i.id !== null).map((i) => i.id!),
       )
-      let createdIssues = 0
 
       for (const issue of updated) {
         toRemove.delete(issue.id!)
 
         if (issue.id === null) {
           yield* source.createIssue(issue)
-          createdIssues++
           continue
         }
 

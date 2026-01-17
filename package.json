@@ -9,7 +9,8 @@
     "lalph": "./dist/cli.mjs"
   },
   "scripts": {
-    "check": "tsc --noEmit && prettier --check .",
+    "prepare": "husky",
+    "check": "tsc --noEmit && prettier --check . && oxlint -c .oxlintrc.json",
     "build": "tsdown"
   },
   "files": [
@@ -33,7 +34,9 @@
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "@octokit/types": "^16.0.0",
     "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@004c047",
+    "husky": "^9.1.7",
     "octokit": "^5.0.5",
+    "oxlint": "^1.39.0",
     "prettier": "^3.7.4",
     "tsdown": "^0.19.0",
     "typescript": "^5.9.3",

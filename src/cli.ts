@@ -1,15 +1,7 @@
 #!/usr/bin/env node
 
 import { Command, Flag } from "effect/unstable/cli"
-import {
-  Cause,
-  DateTime,
-  Duration,
-  Effect,
-  FiberSet,
-  Filter,
-  Layer,
-} from "effect"
+import { Cause, Duration, Effect, FiberSet, Filter, Layer } from "effect"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Settings } from "./Settings.ts"
 import { run } from "./Runner.ts"
@@ -109,7 +101,6 @@ const root = Command.make("lalph", {
       )
 
       let iteration = 0
-      let lastStartedAt = DateTime.makeUnsafe(0)
       let inProgress = 0
       let quit = false
 
@@ -130,7 +121,6 @@ const root = Command.make("lalph", {
           })
         }
 
-        lastStartedAt = yield* DateTime.now
         inProgress++
 
         yield* checkForWork.pipe(
