@@ -127,20 +127,22 @@ ${prdNotes}`
       }) => `# Instructions
 
 Your earlier attempt to complete the task with id \`${options.taskId}\` took too
-long and has timed out.
+long and has timed out. You can find the task details in the prd.yml file.
 
 The following instructions should be done without interaction or asking for
 permission.
 
-1. Research and break down the task into smaller tasks and add them to the prd.yml file.
-2. Mark the original task as "done" by updating its \`state\` in the prd.yml file.
-3. Each new task should have an id of \`null\`, a title, and a concise description that
+1. Investigate why you think the task took too long. Research the codebase
+   further if needed.
+2. Break down the task into smaller tasks and add them to the prd.yml file.
+3. Mark the original task as "done" by updating its \`state\` in the prd.yml file.
+4. Each new task should have an id of \`null\`, a title, and a concise description that
    includes a short summary of the task and a brief list of steps to complete it.
    - The tasks should start in the "todo" state.
    - Each task should be small and specific.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-4. Setup task dependencies using the \`blockedBy\` field as needed. You will need
+5. Setup task dependencies using the \`blockedBy\` field as needed. You will need
    to wait 5 seconds after adding tasks to the prd.yml file to allow the system
    to assign ids to the new tasks before you can setup dependencies.
 
