@@ -98,7 +98,10 @@ permission.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
 4. Implement the task.
-   - As you are implementing the task, update the task description with any important findings or notes.
+   - This session will time out after a certain period, so make sure to record
+     key information that could speed up future work on the task in the task
+     description. Record the information **in the moment** as you discover it,
+     do not wait until the end of the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 6. Create or update the pull request with your progress.
    ${sourceMeta.githubPrInstructions}
