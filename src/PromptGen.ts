@@ -165,6 +165,7 @@ ${prdNotes}`
 3. Add the new tasks to the prd.yml file.
 4. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
 5. Add a outline of the plan to a "lalph-plan.md" file, that will help guide future iterations.
+6. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
 
 **Important:** You are only creating or updating the plan, not implementing any tasks yet.
  
