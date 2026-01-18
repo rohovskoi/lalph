@@ -141,7 +141,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     })
 
     const mergeConflictInstruction =
-      "Please rebase and resolve merge conflicts before continuing."
+      "Next step: Rebase PR and resolve merge conflicts."
 
     const flagUnmergable = Effect.fnUntraced(function* (options: {
       readonly issueId: string
@@ -154,7 +154,7 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
       )
       const nextDescription = hasInstruction
         ? issue.description
-        : `${issue.description.trimEnd()}\n\n${mergeConflictInstruction}`
+        : `${mergeConflictInstruction}\n\n${issue.description.trim()}`
 
       yield* source.updateIssue({
         issueId: issue.id!,
