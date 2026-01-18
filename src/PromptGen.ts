@@ -97,6 +97,7 @@ permission.
      HEAD as the base.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
+     Also read the normal comments to see if there are any additional requests.
 4. Implement the task.
    - This session will time out after a certain period, so make sure to record
      key information that could speed up future work on the task in the task
