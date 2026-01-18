@@ -23,7 +23,7 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
       recursive: true,
     })
 
-    const setupPath = pathService.resolve(pathService.join(".lalph-setup.sh"))
+    const setupPath = pathService.resolve(".lalph-setup.sh")
     if (yield* fs.exists(setupPath)) {
       yield* ChildProcess.make({
         cwd: directory,

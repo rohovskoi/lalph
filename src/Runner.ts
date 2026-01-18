@@ -30,10 +30,18 @@ export const run = Effect.fnUntraced(
     const cliAgent = yield* getOrSelectCliAgent
     const prd = yield* Prd
 
+    const exec = (
+      template: TemplateStringsArray,
+      ...args: Array<string | number | boolean>
+    ) =>
+      ChildProcess.make({
+        cwd: worktree.directory,
+        extendEnv: true,
+        env: cliAgent.env,
+      })(template, ...args).pipe(ChildProcess.exitCode)
+
     if (Option.isSome(options.targetBranch)) {
-      yield* ChildProcess.make`git checkout ${`origin/${options.targetBranch.value}`}`.pipe(
-        ChildProcess.exitCode,
-      )
+      yield* exec`git checkout ${`origin/${options.targetBranch.value}`}`
     }
 
     const chooseCommand = cliAgent.command({
@@ -120,15 +128,10 @@ export const run = Effect.fnUntraced(
     } else if (options.autoMerge) {
       for (const pr of prs) {
         if (Option.isSome(options.targetBranch)) {
-          yield* ChildProcess.make`gh pr edit ${pr.prNumber} --base ${options.targetBranch.value}`.pipe(
-            ChildProcess.exitCode,
-          )
+          yield* exec`gh pr edit ${pr.prNumber} --base ${options.targetBranch.value}`
         }
 
-        const exitCode =
-          yield* ChildProcess.make`gh pr merge ${pr.prNumber} -sd`.pipe(
-            ChildProcess.exitCode,
-          )
+        const exitCode = yield* exec`gh pr merge ${pr.prNumber} -sd`
         if (exitCode !== 0) {
           yield* prd.flagUnmergable({ issueId: pr.issueId })
         }
