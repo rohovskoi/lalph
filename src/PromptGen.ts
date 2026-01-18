@@ -101,7 +101,12 @@ permission.
    - This session will time out after a certain period, so make sure to record
      key information that could speed up future work on the task in the task
      description. Record the information **in the moment** as you discover it,
-     do not wait until the end of the task.
+     do not wait until the end of the task. Things to record include:
+     - Important discoveries about the codebase.
+     - Any challenges faced and how you overcame them.
+     - APIs / libraries discovered that were useful.
+     - Links to relevant documentation.
+     - Any other information that could help future work on the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 6. Create or update the pull request with your progress.
    ${sourceMeta.githubPrInstructions}
@@ -114,6 +119,10 @@ permission.
    - Add follow up tasks only if needed.
    - Append to the \`description\` field with any notes or important discoveries.
    - If you believe the task is complete, update the \`state\` to "in-review".
+
+**Remember:** record key information that could speed up future work on the task in
+the task description **in the moment** as you discover it, do not wait until
+the end of the task.
 
 ## Handling blockers
 
