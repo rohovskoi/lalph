@@ -163,7 +163,9 @@ permission.
 
 ${prdNotes}`
 
-      const planPrompt = `# Instructions
+      const planPrompt = (options: {
+        readonly specsDirectory: string
+      }) => `# Instructions
 
 1. Ask the user for the idea / request, then your job is to create a detailed
    specification for the project based on that input and save it to a file.
@@ -182,14 +184,14 @@ ${prdNotes}`
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
 3. Add the new or updated tasks to the prd.yml file.
 4. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
-5. Add a outline of the plan to a "lalph-plan.md" file, that will help guide future iterations.
-6. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
+5. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
 
 **Important:** You are only creating or updating a plan, not implementing any tasks yet.
 
 ## Specifications
 
-- Should go into a \`.specs\` directory, unless specified otherwise.
+- Should go into a \`${options.specsDirectory}\` directory, with a filename that reflects the
+  project name.
 
 A specification file should include:
 

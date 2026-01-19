@@ -28,9 +28,15 @@ const selectSource = Command.make("source").pipe(
   Command.withHandler(() => selectIssueSource),
 )
 
-const planMode = Command.make("plan").pipe(
+const specsDirectory = Flag.directory("specs").pipe(
+  Flag.withDescription("Directory to store plan specifications"),
+  Flag.withAlias("s"),
+  Flag.withDefault(".specs"),
+)
+
+const planMode = Command.make("plan", { specsDirectory }).pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
-  Command.withHandler(() => plan),
+  Command.withHandler(plan),
   Command.provide(CurrentIssueSource.layer),
 )
 
