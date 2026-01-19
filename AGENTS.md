@@ -3,7 +3,9 @@
 - The base branch for this repository is `master`.
 - The package manager used is `pnpm`.
 
-# Library reference
+# Learning more about the "effect" library
 
-- For learning more about the `effect` library, see the source code in
-  `.agents/effect/`.
+The full source code for the `effect` library is in `.repos/effect/`.
+
+Use this for learning more about the library, rather than browsing the code in
+`node_modules/`.

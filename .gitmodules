@@ -1,3 +1,0 @@
-[submodule ".agents/effect"]
-	path = .agents/effect
-	url = https://github.com/effect-ts/effect-smol.git
