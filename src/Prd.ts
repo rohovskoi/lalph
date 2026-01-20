@@ -22,6 +22,8 @@ export class Prd extends ServiceMap.Service<Prd>()("lalph/Prd", {
     const lalphDir = pathService.join(worktree.directory, `.lalph`)
     const prdFile = pathService.join(worktree.directory, `.lalph`, `prd.yml`)
 
+    yield* Effect.addFinalizer(() => Effect.ignore(fs.remove(prdFile)))
+
     let current = yield* source.issues
     yield* fs.writeFileString(prdFile, PrdIssue.arrayToYaml(current))
 
