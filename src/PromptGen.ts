@@ -31,6 +31,8 @@ To add a new task, append a new item to the prd.yml file with the id set to
 When adding a new task, it will take about 5 seconds for the system to update the
 prd.yml file with a new id for the task.
 
+After adding a new task, you can setup dependencies using the \`blockedBy\` field
+
 ### Removing tasks
 
 To remove a task, simply delete the item from the prd.yml file.
@@ -99,15 +101,6 @@ permission.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
      Also read the normal comments to see if there are any additional requests.
 4. Implement the task.
-   - This session will time out after a certain period, so make sure to record
-     key information that could speed up future work on the task in the task
-     description. Record the information **in the moment** as you discover it,
-     do not wait until the end of the task. Things to record include:
-     - Important discoveries about the codebase.
-     - Any challenges faced and how you overcame them.
-     - APIs / libraries discovered that were useful.
-     - Links to relevant documentation.
-     - Any other information that could help future work on the task.
 5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 6. Create or update the pull request with your progress.
    ${sourceMeta.githubPrInstructions}
@@ -117,13 +110,25 @@ permission.
      permission to push branches, create PRs or create git commits.
 7. Update the prd.yml file to reflect any changes in task states.
    - Update the prd.yml file after the GitHub PR has been created or updated.
-   - Add follow up tasks only if needed.
-   - Append to the \`description\` field with any notes or important discoveries.
+   - Rewrite the notes in the description to include only the key discoveries
+     and information that could speed up future work on other tasks.
    - If you believe the task is complete, update the \`state\` to "in-review".
 
-**Remember:** record key information that could speed up future work on the task in
-the task description **in the moment** as you discover it, do not wait until
-the end of the task.
+## Important: Recording key information
+
+This session will time out after a certain period, so make sure to record
+key information that could speed up future work on the task in the description.
+Record the information **in the moment** as you discover it,
+do not wait until the end of the task. Things to record include:
+
+- Important discoveries about the codebase.
+- Any challenges faced and how you overcame them.
+  - If it took multiple attempts to get something working, record what worked.
+  - If you found a library api was renamed or moved, record the new name.
+- Any other information that could help future work on similar tasks.
+
+**If at any point** you discover something that needs fixing, or another task
+that needs doing, immediately add it to the prd.yml file as a new task.
 
 ## Handling blockers
 
@@ -174,7 +179,7 @@ ${prdNotes}`
    - Make sure to research the codebase before creating the specification, to
      ensure it is relevant and feasible.
 2. Once you have saved the specification, your next job is to break down the
-   specification into smaller, manageable tasks.
+   specification into smaller, manageable tasks and add them to the prd.yml file.
    Each task should have a id of \`null\`, a title, and a concise description that
    includes a where to find the plan specification, a short summary of the task and a
    brief list of steps to complete it.
@@ -182,13 +187,12 @@ ${prdNotes}`
    - Each task should be an atomic, committable piece of work.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-   - **Never** create a research task. You should do all the necessary research
-     before creating the specification and tasks. Instead of creating a task like
-     "Research endpoints to refactor", investigate then endpoints first then create
-     tasks like "Implement user profile endpoint", "Refactor authentication endpoint", etc.
-3. Add the new or updated tasks to the prd.yml file.
-4. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
-5. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
+   - If you need to add a research task, mention in the description that it needs to:
+     - add a specification file in the \`${options.specsDirectory}\` directory.
+     - add follow up tasks in the prd.yml file based on the new specification. The tasks
+       should reference the specification file in their description.
+3. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
+4. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
 
 **Important:** You are only creating or updating a plan, not implementing any tasks yet.
 
