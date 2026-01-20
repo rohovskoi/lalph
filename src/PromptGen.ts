@@ -90,6 +90,8 @@ The following instructions should be done without interaction or asking for
 permission.
 
 1. Your job is to complete the task with id \`${options.taskId}\` from the prd.yml file.
+   Read the entire prd.yml file to understand the context of the task and any
+   key learnings from previous work.
 2. Check if there is an existing Github PR for the task, otherwise create a new
    branch for the task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}
    - If there is an existing PR, checkout the branch for that PR.
