@@ -17,6 +17,7 @@ import { plan } from "./Planner.ts"
 import { getOrSelectCliAgent, selectCliAgent } from "./CliAgent.ts"
 import { CurrentIssueSource, selectIssueSource } from "./IssueSources.ts"
 import { checkForWork } from "./IssueSource.ts"
+import { createIssue } from "./CreateIssue.ts"
 
 const selectAgent = Command.make("agent").pipe(
   Command.withDescription("Select the CLI agent to use"),
@@ -172,7 +173,7 @@ const root = Command.make("lalph", {
     }, Effect.scoped),
   ),
   Command.provide(CurrentIssueSource.layer),
-  Command.withSubcommands([planMode, selectSource, selectAgent]),
+  Command.withSubcommands([planMode, createIssue, selectSource, selectAgent]),
 )
 
 Command.run(root, {
