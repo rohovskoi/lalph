@@ -94,6 +94,7 @@ const root = Command.make("lalph", {
       if (reset) {
         yield* resetCurrentIssueSource
       }
+      const source = yield* Layer.build(CurrentIssueSource.layer)
       yield* getOrSelectCliAgent
 
       const isFinite = Number.isFinite(iterations)
@@ -160,6 +161,7 @@ const root = Command.make("lalph", {
           }),
           Effect.ensuring(semaphore.release(1)),
           Effect.ensuring(Deferred.completeWith(startedDeferred, Effect.void)),
+          Effect.provide(source),
           FiberSet.run(fibers),
         )
 
@@ -171,7 +173,6 @@ const root = Command.make("lalph", {
       yield* FiberSet.awaitEmpty(fibers)
     }, Effect.scoped),
   ),
-  Command.provide(CurrentIssueSource.layer),
 )
 
 const selectAgent = Command.make("agent").pipe(
