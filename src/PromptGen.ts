@@ -26,7 +26,8 @@ are:
 ### Adding tasks
 
 To add a new task, append a new item to the prd.yml file with the id set to
-\`null\`.
+\`null\`, a title, state set to "todo", and a concise description that includes
+a short summary of the task and a brief list of steps to complete it.
 
 When adding a new task, it will take about 5 seconds for the system to update the
 prd.yml file with a new id for the task.
@@ -43,9 +44,7 @@ To remove a task, simply delete the item from the prd.yml file.
 ${JSON.stringify(PrdIssue.jsonSchema, null, 2)}
 \`\`\``
 
-      const promptChoose = `# Instructions
-
-Your job is to choose the next task to work on from the prd.yml file. **DO NOT** implement the task yet.
+      const promptChoose = `Your job is to choose the next task to work on from the prd.yml file. **DO NOT** implement the task yet.
 
 The following instructions should be done without interaction or asking for permission.
 
@@ -74,14 +73,11 @@ ${prdNotes}`
       const prompt = (options: {
         readonly taskId: string
         readonly targetBranch: string | undefined
-      }) => `# Instructions
-
-The following instructions should be done without interaction or asking for
-permission.
+      }) => `The following instructions should be done without interaction or asking for permission.
 
 1. Your job is to complete the task with id \`${options.taskId}\` from the prd.yml file.
    Read the entire prd.yml file to understand the context of the task and any
-   key learnings from previous work.
+   key learnings from previous work. Study the .specs/README.md file.
 2. Check if there is an existing Github PR for the task, otherwise create a new
    branch for the task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}
    - If there is an existing PR, checkout the branch for that PR.
@@ -92,15 +88,15 @@ permission.
    - New branches should be named using the format \`{task id}/description\`.
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
      Also read the normal comments to see if there are any additional requests.
-4. Implement the task.
-5. Run any checks / feedback loops, such as type checks, unit tests, or linting.
-6. Create or update the pull request with your progress.
+3. Implement the task.
+4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
+5. Create or update the pull request with your progress.
    ${sourceMeta.githubPrInstructions}
    The PR description should include a summary of the changes made.
    - **DO NOT** commit any of the files in the \`.lalph\` directory.
    - You have permission to create or update the PR as needed. You have full
      permission to push branches, create PRs or create git commits.
-7. Update the prd.yml file to reflect any changes in task states.
+6. Update the prd.yml file to reflect any changes in task states.
    - Update the prd.yml file after the GitHub PR has been created or updated.
    - Rewrite the notes in the description to include only the key discoveries
      and information that could speed up future work on other tasks.
@@ -119,7 +115,7 @@ Record the information **in the moment** as you discover it,
 do not wait until the end of the task. Things to record include:
 
 - Important discoveries about the codebase.
-- Any challenges faced and how you overcame them.
+- Any challenges faced and how you overcame them. For example:
   - If it took multiple attempts to get something working, record what worked.
   - If you found a library api was renamed or moved, record the new name.
 - Any other information that could help future work on similar tasks.
@@ -137,9 +133,7 @@ ${prdNotes}`
 
       const promptTimeout = (options: {
         readonly taskId: string
-      }) => `# Instructions
-
-Your earlier attempt to complete the task with id \`${options.taskId}\` took too
+      }) => `Your earlier attempt to complete the task with id \`${options.taskId}\` took too
 long and has timed out. You can find the task details in the prd.yml file.
 
 The following instructions should be done without interaction or asking for
@@ -164,20 +158,14 @@ ${prdNotes}`
 
       const planPrompt = (options: {
         readonly specsDirectory: string
-      }) => `# Instructions
-
-1. Ask the user for the idea / request, then your job is to create a detailed
-   specification for the project based on that input and save it to a file.
-   - If the user is asking to update an existing plan, then read the
-     existing specification before continuing.
-   - Make sure to research the codebase before creating the specification, to
-     ensure it is relevant and feasible.
-2. Once you have saved the specification, your next job is to break down the
-   specification into smaller, manageable tasks and add them to the prd.yml file.
-   Each task should have a id of \`null\`, a title, and a concise description that
-   includes a where to find the plan specification, a short summary of the task and a
-   brief list of steps to complete it.
-   - The tasks should start in the "todo" state.
+      }) => `1. Ask the user for the idea / request, then your job is to create a detailed
+   specification to fulfill the request and save it as a file. Interview the user
+   to gather all the necessary requirements and details for the specification.
+   You need to be curious and ask lots of questions.
+2. Once you have saved the specification, your next job is to create an implementation
+   plan by breaking down the specification into smaller, manageable tasks and add
+   them to the prd.yml file.
+   Each task include in the description where to find the plan specification.
    - Each task should be an atomic, committable piece of work.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
@@ -194,12 +182,9 @@ ${prdNotes}`
 
 - Should go into a \`${options.specsDirectory}\` directory, with a filename that reflects the
   project name.
-
-A specification file should include:
-
-- Requirements: functional and non-functional requirements.
-- Design: technical design, architecture decisions, data models, etc.
-- Acceptance criteria that define when the project is considered complete.
+- When adding a new specification, add a link to in the README.md file in the
+  \`${options.specsDirectory}\` directory along with a brief overview of the specification.
+  If the README.md file does not exist, create it.
  
 ${prdNotes}`
 
