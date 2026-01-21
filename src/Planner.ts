@@ -1,4 +1,4 @@
-import { Effect, FileSystem, Path } from "effect"
+import { Effect, FileSystem, Option, Path } from "effect"
 import { PromptGen } from "./PromptGen.ts"
 import { Prd } from "./Prd.ts"
 import { ChildProcess } from "effect/unstable/process"
@@ -6,12 +6,28 @@ import { Worktree } from "./Worktree.ts"
 import { getOrSelectCliAgent } from "./CliAgent.ts"
 
 export const plan = Effect.fnUntraced(
-  function* (options: { readonly specsDirectory: string }) {
+  function* (options: {
+    readonly specsDirectory: string
+    readonly targetBranch: Option.Option<string>
+  }) {
     const fs = yield* FileSystem.FileSystem
     const pathService = yield* Path.Path
     const worktree = yield* Worktree
     const promptGen = yield* PromptGen
     const cliAgent = yield* getOrSelectCliAgent
+
+    const exec = (
+      template: TemplateStringsArray,
+      ...args: Array<string | number | boolean>
+    ) =>
+      ChildProcess.make({
+        cwd: worktree.directory,
+        extendEnv: true,
+      })(template, ...args).pipe(ChildProcess.exitCode)
+
+    if (Option.isSome(options.targetBranch)) {
+      yield* exec`git checkout ${`origin/${options.targetBranch.value}`}`
+    }
 
     const cliCommand = cliAgent.commandPlan({
       prompt: promptGen.planPrompt(options),

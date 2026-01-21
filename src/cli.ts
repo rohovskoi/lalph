@@ -192,11 +192,11 @@ const planMode = Command.make("plan").pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(
     Effect.fnUntraced(function* () {
-      const { reset, specsDirectory } = yield* root
+      const { reset, specsDirectory, targetBranch } = yield* root
       if (reset) {
         yield* resetCurrentIssueSource
       }
-      yield* plan({ specsDirectory }).pipe(
+      yield* plan({ specsDirectory, targetBranch }).pipe(
         Effect.provide(CurrentIssueSource.layer),
       )
     }),

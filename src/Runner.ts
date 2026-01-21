@@ -39,7 +39,6 @@ export const run = Effect.fnUntraced(
       ChildProcess.make({
         cwd: worktree.directory,
         extendEnv: true,
-        env: cliAgent.env,
       })(template, ...args).pipe(ChildProcess.exitCode)
 
     const execOutput = (
@@ -49,7 +48,6 @@ export const run = Effect.fnUntraced(
       ChildProcess.make({
         cwd: worktree.directory,
         extendEnv: true,
-        env: cliAgent.env,
       })(template, ...args).pipe(
         ChildProcess.string,
         Effect.map((output) => output.trim()),
