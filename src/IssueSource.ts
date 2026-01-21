@@ -1,10 +1,6 @@
 import { Effect, Schema, ServiceMap } from "effect"
 import type { PrdIssue } from "./domain/PrdIssue.ts"
 
-/**
- * Current unused, but eventually will represent a source of issues so we can
- * support more than just Linear
- */
 export class IssueSource extends ServiceMap.Service<
   IssueSource,
   {
