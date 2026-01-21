@@ -80,6 +80,7 @@ const root = Command.make("lalph", {
   maxIterationMinutes,
   stallMinutes,
   reset,
+  specsDirectory,
 }).pipe(
   Command.withHandler(
     Effect.fnUntraced(function* ({
@@ -90,6 +91,7 @@ const root = Command.make("lalph", {
       maxIterationMinutes,
       stallMinutes,
       reset,
+      specsDirectory,
     }) {
       if (reset) {
         yield* resetCurrentIssueSource
@@ -126,6 +128,7 @@ const root = Command.make("lalph", {
               startedDeferred,
               autoMerge,
               targetBranch,
+              specsDirectory,
               stallTimeout: Duration.minutes(stallMinutes),
               runTimeout: Duration.minutes(maxIterationMinutes),
             }),
@@ -185,15 +188,17 @@ const selectSource = Command.make("source").pipe(
   Command.withHandler(() => selectIssueSource),
 )
 
-const planMode = Command.make("plan", { specsDirectory }).pipe(
+const planMode = Command.make("plan").pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(
-    Effect.fnUntraced(function* (options) {
-      const { reset } = yield* root
+    Effect.fnUntraced(function* () {
+      const { reset, specsDirectory } = yield* root
       if (reset) {
         yield* resetCurrentIssueSource
       }
-      yield* plan(options).pipe(Effect.provide(CurrentIssueSource.layer))
+      yield* plan({ specsDirectory }).pipe(
+        Effect.provide(CurrentIssueSource.layer),
+      )
     }),
   ),
 )

@@ -21,6 +21,7 @@ export const run = Effect.fnUntraced(
     readonly startedDeferred: Deferred.Deferred<void>
     readonly autoMerge: boolean
     readonly targetBranch: Option.Option<string>
+    readonly specsDirectory: string
     readonly stallTimeout: Duration.Duration
     readonly runTimeout: Duration.Duration
   }) {
@@ -140,6 +141,7 @@ export const run = Effect.fnUntraced(
         prompt: promptGen.prompt({
           taskId: task.id,
           targetBranch: Option.getOrUndefined(options.targetBranch),
+          specsDirectory: options.specsDirectory,
         }),
         prdFilePath: pathService.join(".lalph", "prd.yml"),
       })

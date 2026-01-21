@@ -73,11 +73,13 @@ ${prdNotes}`
       const prompt = (options: {
         readonly taskId: string
         readonly targetBranch: string | undefined
+        readonly specsDirectory: string
       }) => `The following instructions should be done without interaction or asking for permission.
 
-1. Your job is to complete the task with id \`${options.taskId}\` from the prd.yml file.
+1. Study the ${options.specsDirectory}/README.md file (if available).
+   Then your job is to complete the task with id \`${options.taskId}\` from the prd.yml file.
    Read the entire prd.yml file to understand the context of the task and any
-   key learnings from previous work. Study the .specs/README.md file.
+   key learnings from previous work.
 2. Check if there is an existing Github PR for the task, otherwise create a new
    branch for the task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}
    - If there is an existing PR, checkout the branch for that PR.
@@ -89,6 +91,10 @@ ${prdNotes}`
    - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
      Also read the normal comments to see if there are any additional requests.
 3. Implement the task.
+   - **If at any point** you discover something that needs fixing, or another task
+     that needs doing, immediately add it to the prd.yml file as a new task.
+   - Add important discoveries about the codebase, or challenges faced to the task's
+     \`description\`. More details below.
 4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
 5. Create or update the pull request with your progress.
    ${sourceMeta.githubPrInstructions}
@@ -126,9 +132,6 @@ If for any reason you get stuck on a task, mark the task back as "todo" by updat
 \`state\` and leaving some notes in the task's \`description\` field about the
 challenges faced.
 
-If it feels like you are brute forcing your way through a task, STOP and move the
-task back to "todo" state with notes on why in the description.
-
 ${prdNotes}`
 
       const promptTimeout = (options: {
@@ -140,19 +143,20 @@ The following instructions should be done without interaction or asking for
 permission.
 
 1. Investigate why you think the task took too long. Research the codebase
-   further if needed.
-2. Break down the task into smaller tasks and add them to the prd.yml file.
-3. Mark the original task as "done" by updating its \`state\` in the prd.yml file.
-4. Each new task should have an id of \`null\`, a title, and a concise description that
+   further to understand what is needed to complete the task.
+2. Mark the original task as "done" by updating its \`state\` in the prd.yml file.
+3. Break down the task into smaller tasks and add them to the prd.yml file.
+   Each new task should have an id of \`null\`, a title, and a concise description that
    includes a short summary of the task and a brief list of steps to complete it.
    - Include where to find the plan specification in the description (if applicable).
    - The tasks should start in the "todo" state.
    - Each task should be an atomic, committable piece of work.
      Instead of creating tasks like "Refactor the authentication system", create
      smaller tasks like "Implement OAuth2 login endpoint", "Add JWT token refresh mechanism", etc.
-5. Setup task dependencies using the \`blockedBy\` field as needed. You will need
+4. Setup task dependencies using the \`blockedBy\` field as needed. You will need
    to wait 5 seconds after adding tasks to the prd.yml file to allow the system
    to assign ids to the new tasks before you can setup dependencies.
+5. If any specifications need updating based on your new understanding, update them.
 
 ${prdNotes}`
 
