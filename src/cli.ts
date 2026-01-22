@@ -12,6 +12,7 @@ import { commandShell } from "./commands/shell.ts"
 import { commandSource } from "./commands/source.ts"
 import { commandAgent } from "./commands/agent.ts"
 import PackageJson from "../package.json" with { type: "json" }
+import { resetCurrentIssueSource } from "./IssueSources.ts"
 
 commandRoot.pipe(
   Command.withSubcommands([
@@ -22,6 +23,14 @@ commandRoot.pipe(
     commandSource,
     commandAgent,
   ]),
+  // Common flags are handled here
+  Command.provideEffectDiscard(
+    Effect.fnUntraced(function* (options) {
+      if (options.reset) {
+        yield* resetCurrentIssueSource
+      }
+    }),
+  ),
   (_) =>
     Command.run(_, {
       version: PackageJson.version,

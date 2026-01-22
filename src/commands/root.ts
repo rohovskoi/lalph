@@ -86,6 +86,7 @@ const specsDirectory = Flag.directory("specs").pipe(
   Flag.withDefault(".specs"),
 )
 
+// handled in cli.ts
 const reset = Flag.boolean("reset").pipe(
   Flag.withDescription("Reset the current issue source before running"),
   Flag.withAlias("r"),
@@ -107,12 +108,8 @@ export const commandRoot = Command.make("lalph", {
       targetBranch,
       maxIterationMinutes,
       stallMinutes,
-      reset,
       specsDirectory,
     }) {
-      if (reset) {
-        yield* resetCurrentIssueSource
-      }
       const source = yield* Layer.build(CurrentIssueSource.layer)
       yield* getOrSelectCliAgent
 
