@@ -68,7 +68,15 @@ class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
         }),
       )
 
-    const projects = stream((client) => client.projects())
+    const projects = stream((client) =>
+      client.projects({
+        filter: {
+          status: {
+            type: { neq: "completed" },
+          },
+        },
+      }),
+    )
     const labels = stream((client) => client.issueLabels())
     const states = yield* Stream.runCollect(
       stream((client) => client.workflowStates()),
