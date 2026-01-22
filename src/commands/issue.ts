@@ -1,9 +1,9 @@
 import { Command } from "effect/unstable/cli"
-import { CurrentIssueSource } from "./IssueSources.ts"
+import { CurrentIssueSource } from "../IssueSources.ts"
 import { Config, Effect, FileSystem, Schema } from "effect"
-import { IssueSource } from "./IssueSource.ts"
+import { IssueSource } from "../IssueSource.ts"
 import { ChildProcess } from "effect/unstable/process"
-import { PrdIssue } from "./domain/PrdIssue.ts"
+import { PrdIssue } from "../domain/PrdIssue.ts"
 import * as Yaml from "yaml"
 
 const issueTemplate = `---
@@ -26,7 +26,7 @@ const FrontMatterSchema = Schema.toCodecJson(
   }),
 )
 
-export const createIssue = Command.make("issue").pipe(
+export const commandIssue = Command.make("issue").pipe(
   Command.withDescription("Create a new issue in the selected issue source"),
   Command.withHandler(
     Effect.fnUntraced(function* () {

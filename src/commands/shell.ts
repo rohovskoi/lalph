@@ -1,11 +1,11 @@
 import { Command } from "effect/unstable/cli"
-import { CurrentIssueSource } from "./IssueSources.ts"
+import { CurrentIssueSource } from "../IssueSources.ts"
 import { Effect, FileSystem, Layer, Path } from "effect"
 import { ChildProcess } from "effect/unstable/process"
-import { Prd } from "./Prd.ts"
-import { Worktree } from "./Worktree.ts"
+import { Prd } from "../Prd.ts"
+import { Worktree } from "../Worktree.ts"
 
-export const enterShell = Command.make("shell").pipe(
+export const commandShell = Command.make("shell").pipe(
   Command.withDescription("Enter an interactive shell in the worktree"),
   Command.withHandler(
     Effect.fnUntraced(

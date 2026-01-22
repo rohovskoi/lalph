@@ -1,239 +1,30 @@
 #!/usr/bin/env node
 
-import { CliError, Command, Flag } from "effect/unstable/cli"
-import {
-  Cause,
-  Config,
-  Deferred,
-  Duration,
-  Effect,
-  FiberSet,
-  Filter,
-  Layer,
-} from "effect"
+import { Command } from "effect/unstable/cli"
+import { Effect, Layer } from "effect"
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
 import { Settings } from "./Settings.ts"
-import { run } from "./Runner.ts"
-import { plan } from "./Planner.ts"
-import { getOrSelectCliAgent, selectCliAgent } from "./CliAgent.ts"
-import {
-  CurrentIssueSource,
-  resetCurrentIssueSource,
-  selectIssueSource,
-} from "./IssueSources.ts"
-import { checkForWork } from "./IssueSource.ts"
-import { editPrd } from "./Edit.ts"
-import { createIssue } from "./CreateIssue.ts"
-import { enterShell } from "./Shell.ts"
-import { ChildProcess } from "effect/unstable/process"
+import { commandRoot } from "./commands/root.ts"
+import { commandPlan } from "./commands/plan.ts"
+import { commandIssue } from "./commands/issue.ts"
+import { commandEdit } from "./commands/edit.ts"
+import { commandShell } from "./commands/shell.ts"
+import { commandSource } from "./commands/source.ts"
+import { commandAgent } from "./commands/agent.ts"
+import PackageJson from "../package.json" with { type: "json" }
 
-const iterations = Flag.integer("iterations").pipe(
-  Flag.withDescription("Number of iterations to run, defaults to unlimited"),
-  Flag.withAlias("i"),
-  Flag.withDefault(Number.POSITIVE_INFINITY),
-)
-
-const concurrency = Flag.integer("concurrency").pipe(
-  Flag.withDescription("Number of concurrent agents, defaults to 1"),
-  Flag.withAlias("c"),
-  Flag.withDefault(1),
-)
-
-const targetBranch = Flag.string("target-branch").pipe(
-  Flag.withDescription(
-    "Target branch for PRs. Env variable: LALPH_TARGET_BRANCH",
-  ),
-  Flag.withAlias("b"),
-  Flag.withFallbackConfig(Config.string("LALPH_TARGET_BRANCH")),
-  Flag.withDefault(
-    ChildProcess.make`git branch --show-current`.pipe(
-      ChildProcess.string,
-      Effect.orDie,
-      Effect.flatMap((output) => {
-        const branch = output.trim()
-        return branch === ""
-          ? Effect.fail(
-              new CliError.MissingOption({
-                option: "--target-branch",
-              }),
-            )
-          : Effect.succeed(branch)
-      }),
-    ),
-  ),
-  Flag.optional,
-)
-
-const maxIterationMinutes = Flag.integer("max-minutes").pipe(
-  Flag.withDescription(
-    "Maximum number of minutes to allow an iteration to run. Defaults to 90 minutes. Env variable: LALPH_MAX_MINUTES",
-  ),
-  Flag.withFallbackConfig(Config.int("LALPH_MAX_MINUTES")),
-  Flag.withDefault(90),
-)
-
-const stallMinutes = Flag.integer("stall-minutes").pipe(
-  Flag.withDescription(
-    "If no activity occurs for this many minutes, the iteration will be stopped. Defaults to 5 minutes. Env variable: LALPH_STALL_MINUTES",
-  ),
-  Flag.withFallbackConfig(Config.int("LALPH_STALL_MINUTES")),
-  Flag.withDefault(5),
-)
-
-const specsDirectory = Flag.directory("specs").pipe(
-  Flag.withDescription(
-    "Directory to store plan specifications. Env variable: LALPH_SPECS",
-  ),
-  Flag.withAlias("s"),
-  Flag.withFallbackConfig(Config.string("LALPH_SPECS")),
-  Flag.withDefault(".specs"),
-)
-
-const reset = Flag.boolean("reset").pipe(
-  Flag.withDescription("Reset the current issue source before running"),
-  Flag.withAlias("r"),
-)
-
-const root = Command.make("lalph", {
-  iterations,
-  concurrency,
-  targetBranch,
-  maxIterationMinutes,
-  stallMinutes,
-  reset,
-  specsDirectory,
-}).pipe(
-  Command.withHandler(
-    Effect.fnUntraced(function* ({
-      iterations,
-      concurrency,
-      targetBranch,
-      maxIterationMinutes,
-      stallMinutes,
-      reset,
-      specsDirectory,
-    }) {
-      if (reset) {
-        yield* resetCurrentIssueSource
-      }
-      const source = yield* Layer.build(CurrentIssueSource.layer)
-      yield* getOrSelectCliAgent
-
-      const isFinite = Number.isFinite(iterations)
-      const iterationsDisplay = isFinite ? iterations : "unlimited"
-      const runConcurrency = Math.max(1, concurrency)
-      const semaphore = Effect.makeSemaphoreUnsafe(runConcurrency)
-      const fibers = yield* FiberSet.make()
-
-      yield* Effect.log(
-        `Executing ${iterationsDisplay} iteration(s) with concurrency ${runConcurrency}`,
-      )
-
-      let iteration = 0
-      let quit = false
-
-      while (true) {
-        yield* semaphore.take(1)
-        if (quit || (isFinite && iteration >= iterations)) {
-          break
-        }
-
-        const currentIteration = iteration
-
-        const startedDeferred = yield* Deferred.make<void>()
-
-        yield* checkForWork.pipe(
-          Effect.andThen(
-            run({
-              startedDeferred,
-              targetBranch,
-              specsDirectory,
-              stallTimeout: Duration.minutes(stallMinutes),
-              runTimeout: Duration.minutes(maxIterationMinutes),
-            }),
-          ),
-          Effect.catchFilter(
-            (e) =>
-              e._tag === "NoMoreWork" || e._tag === "QuitError"
-                ? Filter.fail(e)
-                : e,
-            (e) => Effect.logWarning(Cause.fail(e)),
-          ),
-          Effect.catchTags({
-            NoMoreWork(_) {
-              if (isFinite) {
-                // If we have a finite number of iterations, we exit when no more
-                // work is found
-                iterations = currentIteration
-                return Effect.log(
-                  `No more work to process, ending after ${currentIteration} iteration(s).`,
-                )
-              }
-              return Effect.log(
-                "No more work to process, waiting 30 seconds...",
-              ).pipe(Effect.andThen(Effect.sleep("30 seconds")))
-            },
-            QuitError(_) {
-              quit = true
-              return Effect.void
-            },
-          }),
-          Effect.annotateLogs({
-            iteration: currentIteration,
-          }),
-          Effect.ensuring(semaphore.release(1)),
-          Effect.ensuring(Deferred.completeWith(startedDeferred, Effect.void)),
-          Effect.provide(source),
-          FiberSet.run(fibers),
-        )
-
-        yield* Deferred.await(startedDeferred)
-
-        iteration++
-      }
-
-      yield* FiberSet.awaitEmpty(fibers)
-    }, Effect.scoped),
-  ),
-)
-
-const selectAgent = Command.make("agent").pipe(
-  Command.withDescription("Select the CLI agent to use"),
-  Command.withHandler(() => selectCliAgent),
-)
-
-const selectSource = Command.make("source").pipe(
-  Command.withDescription("Select the issue source to use"),
-  Command.withHandler(() => selectIssueSource),
-)
-
-const planMode = Command.make("plan").pipe(
-  Command.withDescription("Iterate on an issue plan and create PRD tasks"),
-  Command.withHandler(
-    Effect.fnUntraced(function* () {
-      const { reset, specsDirectory, targetBranch } = yield* root
-      if (reset) {
-        yield* resetCurrentIssueSource
-      }
-      yield* plan({ specsDirectory, targetBranch }).pipe(
-        Effect.provide(CurrentIssueSource.layer),
-      )
-    }),
-  ),
-)
-
-root.pipe(
+commandRoot.pipe(
   Command.withSubcommands([
-    planMode,
-    createIssue,
-    editPrd,
-    enterShell,
-    selectSource,
-    selectAgent,
+    commandPlan,
+    commandIssue,
+    commandEdit,
+    commandShell,
+    commandSource,
+    commandAgent,
   ]),
   (_) =>
     Command.run(_, {
-      version: "0.1.0",
+      version: PackageJson.version,
     }),
   Effect.provide(Settings.layer.pipe(Layer.provideMerge(NodeServices.layer))),
   NodeRuntime.runMain,

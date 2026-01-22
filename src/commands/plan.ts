@@ -1,11 +1,29 @@
 import { Effect, FileSystem, Option, Path } from "effect"
-import { PromptGen } from "./PromptGen.ts"
-import { Prd } from "./Prd.ts"
+import { PromptGen } from "../PromptGen.ts"
+import { Prd } from "../Prd.ts"
 import { ChildProcess } from "effect/unstable/process"
-import { Worktree } from "./Worktree.ts"
-import { getOrSelectCliAgent } from "./CliAgent.ts"
+import { Worktree } from "../Worktree.ts"
+import { getOrSelectCliAgent } from "../CliAgent.ts"
+import { Command } from "effect/unstable/cli"
+import { resetCurrentIssueSource, CurrentIssueSource } from "../IssueSources.ts"
+import { commandRoot } from "./root.ts"
 
-export const plan = Effect.fnUntraced(
+export const commandPlan = Command.make("plan").pipe(
+  Command.withDescription("Iterate on an issue plan and create PRD tasks"),
+  Command.withHandler(
+    Effect.fnUntraced(function* () {
+      const { reset, specsDirectory, targetBranch } = yield* commandRoot
+      if (reset) {
+        yield* resetCurrentIssueSource
+      }
+      yield* plan({ specsDirectory, targetBranch }).pipe(
+        Effect.provide(CurrentIssueSource.layer),
+      )
+    }),
+  ),
+)
+
+const plan = Effect.fnUntraced(
   function* (options: {
     readonly specsDirectory: string
     readonly targetBranch: Option.Option<string>
