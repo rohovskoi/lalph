@@ -33,9 +33,6 @@ export class PrdIssue extends Schema.Class<PrdIssue>("PrdIssue")({
     description:
       "An array of issue IDs that block this issue. These issues must be completed before this issue can be worked on.",
   }),
-  complete: Schema.Boolean.annotate({
-    description: "Whether the issue is complete.",
-  }),
   autoMerge: Schema.Boolean.annotate({
     description:
       "Whether the issue should be auto-merged when complete. Read-only field",

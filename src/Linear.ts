@@ -230,7 +230,6 @@ export const LinearIssueSource = Layer.effect(
               priority: issue.priority,
               estimate: issue.estimate ?? null,
               state,
-              complete: state === "in-review" || state === "done",
               blockedBy: blockedBy.map((i) => i.identifier),
               autoMerge: autoMergeLabelId.pipe(
                 Option.map((labelId) => issue.labelIds.includes(labelId)),

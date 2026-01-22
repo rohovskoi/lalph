@@ -189,7 +189,6 @@ export const GithubIssueSource = Layer.effect(
               priority: 0,
               estimate: null,
               state,
-              complete: state === "done" || state === "in-review",
               blockedBy: dependencies.map((dep) => `#${dep.number}`),
               autoMerge: autoMergeLabelName.pipe(
                 Option.map((labelName) => hasLabel(issue.labels, labelName)),

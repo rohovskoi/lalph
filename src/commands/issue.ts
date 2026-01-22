@@ -82,7 +82,6 @@ export const commandIssue = Command.make("issue").pipe(
           ...frontMatter,
           description,
           state: "todo",
-          complete: false,
           githubPrNumber: null,
         }),
       )
