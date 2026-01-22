@@ -188,9 +188,10 @@ export const commandRoot = Command.make("lalph", {
                   `No more work to process, ending after ${currentIteration} iteration(s).`,
                 )
               }
-              const log = Iterable.isEmpty(fibers)
-                ? Effect.log("No more work to process, waiting 30 seconds...")
-                : Effect.void
+              const log =
+                Iterable.size(fibers) <= 1
+                  ? Effect.log("No more work to process, waiting 30 seconds...")
+                  : Effect.void
               return Effect.andThen(log, Effect.sleep(Duration.seconds(30)))
             },
             QuitError(_) {
