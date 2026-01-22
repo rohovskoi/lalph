@@ -42,6 +42,7 @@ export const claude = new CliAgent({
   env: {},
   command: ({ prompt, prdFilePath }) => [
     "claude",
+    "--dangerously-skip-permissions",
     "-p",
     `@${prdFilePath}
 
