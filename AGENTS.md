@@ -6,7 +6,7 @@
 # Changesets
 
 Every pull request should include a changeset describing the changes made.
-Changesets are added to the `changesets/` directory.
+Changesets are added to the `.changeset/` directory.
 
 # Learning more about the "effect" library
 
