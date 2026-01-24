@@ -85,27 +85,23 @@ ${prdNotes}`
    Then your job is to complete the task with id \`${options.taskId}\` from the prd.yml file.
    Read the entire prd.yml file to understand the context of the task and any
    key learnings from previous work.
-2. Prepare the working branch for the task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}
-   ${
-     options.githubPrNumber
-       ? `- Existing PR detected: #${options.githubPrNumber}. Check out the PR branch (for example: \`gh pr checkout ${options.githubPrNumber}\`).
-   - Check if there are any new comments or requested changes, and address them as part of the task.
-   - When checking for PR reviews, make sure to check the "reviews" field and read ALL unresolved comments.
-     Also read the normal comments to see if there are any additional requests.`
-       : `- No PR detected. Create a new branch for the task.`
-   }
-   - If creating a new branch, don't checkout any main branches first, use the current
-     HEAD as the base.
-   - New branches should be named using the format \`{task id}/description\`.
+2. ${
+        options.githubPrNumber
+          ? `The Github PR #${options.githubPrNumber} has been detected for this task and the branch has been checked out.
+   - Review any feedback in the .lalph/feedback.md file (same folder as the prd.yml file).`
+          : `Create a new branch for the task using the format \`{task id}/description\`, using the current HEAD as the base (don't checkout any main branches first).`
+      }
 3. Implement the task.
-   - **If at any point** you discover something that needs fixing, or another task
-     that needs doing, immediately add it to the prd.yml file as a new task.
+   - If this task is a research task, **do not** make any code changes yet.
    - If this task is a research task and you add follow-up tasks, include this task's
      id in each new task's \`blockedBy\` field.
+   - **If at any point** you discover something that needs fixing, or another task
+     that needs doing, immediately add it to the prd.yml file as a new task unless
+     you plan to fix it as part of this task.
    - Add important discoveries about the codebase, or challenges faced to the task's
      \`description\`. More details below.
 4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
-5. Create or update the pull request with your progress.
+5. ${options.githubPrNumber ? `Create a pull request for this task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}` : "Update the pull request with your progress."}
    ${sourceMeta.githubPrInstructions}
    The PR description should include a summary of the changes made.
    - **DO NOT** commit any of the files in the \`.lalph\` directory.

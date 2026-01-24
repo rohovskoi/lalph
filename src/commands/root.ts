@@ -299,7 +299,6 @@ const run = Effect.fnUntraced(
 
     yield* Effect.gen(function* () {
       let taskId: string | undefined = undefined
-      let taskGithubPrNumber: number | undefined = undefined
       yield* Effect.addFinalizer(
         Effect.fnUntraced(function* (exit) {
           if (exit._tag === "Success") return
@@ -334,9 +333,12 @@ const run = Effect.fnUntraced(
       )
       const chosenTask = yield* Schema.decodeEffect(ChosenTask)(taskJson)
       taskId = chosenTask.id
-      taskGithubPrNumber = chosenTask.githubPrNumber ?? undefined
 
       yield* Deferred.completeWith(options.startedDeferred, Effect.void)
+
+      if (chosenTask.githubPrNumber) {
+        yield* exec`gh pr checkout ${chosenTask.githubPrNumber}`
+      }
 
       const cliCommand = pipe(
         cliAgent.command({
@@ -345,7 +347,7 @@ const run = Effect.fnUntraced(
             taskId,
             targetBranch: Option.getOrUndefined(options.targetBranch),
             specsDirectory: options.specsDirectory,
-            githubPrNumber: taskGithubPrNumber,
+            githubPrNumber: chosenTask.githubPrNumber ?? undefined,
           }),
           prdFilePath: pathService.join(".lalph", "prd.yml"),
         }),
