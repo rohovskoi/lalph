@@ -54,13 +54,16 @@ export class GithubCli extends ServiceMap.Service<GithubCli>()(
               return `No review comments found.`
             }
 
+            const eligibleReviewThreads = reviewThreads.filter(
+              (thread) => thread.shouldDisplayThread,
+            )
+
             let content = `# PR feedback
 
 Comments are rendered in XML format.`
 
-            if (reviewThreads.length > 0) {
-              const reviewCommentsMd = reviewThreads
-                .filter((_) => !_.isCollapsed)
+            if (eligibleReviewThreads.length > 0) {
+              const reviewCommentsMd = eligibleReviewThreads
                 .map((thread) =>
                   renderReviewComments(
                     thread.commentNodes[0]!,

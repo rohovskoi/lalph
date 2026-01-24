@@ -65,6 +65,7 @@ export class ReviewThreadNode extends S.Class<ReviewThreadNode>(
   comments: NodeComments,
 }) {
   readonly commentNodes = this.comments.nodes
+  readonly shouldDisplayThread = !this.isCollapsed && !this.isOutdated
 }
 
 export class ReviewThreadsEdge extends S.Class<ReviewThreadsEdge>(
