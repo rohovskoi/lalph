@@ -30,9 +30,7 @@ export class Github extends ServiceMap.Service<Github>()("lalph/Github", {
     const tokens = yield* TokenManager
     const clients = yield* RcMap.make({
       lookup: (token: string) =>
-        Effect.succeed(
-          new Octokit({ auth: token }).rest as unknown as Api["rest"],
-        ),
+        Effect.succeed(new Octokit({ auth: token }).rest),
       idleTimeToLive: "1 minute",
     })
     const getClient = tokens.get.pipe(
