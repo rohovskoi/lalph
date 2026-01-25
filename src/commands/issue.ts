@@ -39,12 +39,15 @@ export const commandIssue = Command.make("issue").pipe(
       const editor = yield* configEditor
       yield* fs.writeFileString(tempFile, issueTemplate)
 
-      const exitCode = yield* ChildProcess.make(editor, [tempFile], {
-        extendEnv: true,
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      }).pipe(ChildProcess.exitCode)
+      const exitCode = yield* ChildProcess.make(
+        editor[0]!,
+        [...editor.slice(1), tempFile],
+        {
+          stdin: "inherit",
+          stdout: "inherit",
+          stderr: "inherit",
+        },
+      ).pipe(ChildProcess.exitCode)
       if (exitCode !== 0) return
 
       const content = yield* fs.readFileString(tempFile)

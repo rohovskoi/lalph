@@ -3,6 +3,7 @@ import { Command, Prompt } from "effect/unstable/cli"
 import { ChildProcess } from "effect/unstable/process"
 import { allCliAgents } from "../domain/CliAgent.ts"
 import { Setting, selectedCliAgentId } from "../Settings.ts"
+import { parseCommand } from "../shared/child-process.ts"
 
 const commandPrefixSetting = new Setting(
   "commandPrefix",
@@ -10,11 +11,8 @@ const commandPrefixSetting = new Setting(
 )
 
 const parseCommandPrefix = (value: string) => {
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter((part) => part.length > 0)
-  return Array.isArrayNonEmpty(parts)
+  const parts = parseCommand(value)
+  return Array.isReadonlyArrayNonEmpty(parts)
     ? ChildProcess.prefix(parts[0], parts.slice(1))
     : identity<ChildProcess.Command>
 }
