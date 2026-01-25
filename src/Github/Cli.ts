@@ -1,4 +1,13 @@
-import { Data, Effect, Layer, Option, Schema, ServiceMap, String } from "effect"
+import {
+  Data,
+  Effect,
+  flow,
+  Layer,
+  Option,
+  Schema,
+  ServiceMap,
+  String,
+} from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import {
   CommentsData,
@@ -16,15 +25,16 @@ export class GithubCli extends ServiceMap.Service<GithubCli>()(
         yield* ChildProcess.make`gh repo view --json nameWithOwner -q ${".nameWithOwner"}`.pipe(
           ChildProcess.string,
           Effect.option,
-          Effect.flatMap((o) => {
-            const candidate = o.pipe(
+          Effect.flatMap(
+            flow(
               Option.map(String.trim),
               Option.filter(String.isNonEmpty),
-            )
-            return Option.isSome(candidate)
-              ? Effect.succeed(candidate.value)
-              : Effect.fail(new GithubCliRepoNotFound())
-          }),
+              Option.match({
+                onNone: () => Effect.fail(new GithubCliRepoNotFound()),
+                onSome: (value) => Effect.succeed(value),
+              }),
+            ),
+          ),
         )
       const [owner, repo] = nameWithOwner.split("/") as [string, string]
 
