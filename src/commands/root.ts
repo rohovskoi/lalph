@@ -9,6 +9,7 @@ import {
   FiberSet,
   FileSystem,
   Filter,
+  identity,
   Iterable,
   Layer,
   Option,
@@ -249,6 +250,8 @@ const run = Effect.fnUntraced(
       const handle = yield* command
 
       yield* handle.all.pipe(
+        Stream.decodeText(),
+        cliAgent.outputTransformer ? cliAgent.outputTransformer : identity,
         Stream.runForEachArray((output) => {
           lastOutputAt = DateTime.nowUnsafe()
           for (const chunk of output) {
@@ -295,10 +298,9 @@ const run = Effect.fnUntraced(
       )
 
       yield* pipe(
-        cliAgent.command({
+        cliAgent.resolveCommandChoose({
           prompt: promptGen.promptChoose,
           prdFilePath: pathService.join(".lalph", "prd.yml"),
-          outputMode: "inherit",
         }),
         ChildProcess.setCwd(worktree.directory),
         options.commandPrefix,

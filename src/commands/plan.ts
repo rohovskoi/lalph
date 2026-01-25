@@ -9,6 +9,7 @@ import { CurrentIssueSource } from "../IssueSources.ts"
 import { commandRoot } from "./root.ts"
 
 const dangerous = Flag.boolean("dangerous").pipe(
+  Flag.withAlias("d"),
   Flag.withDescription(
     "Enable dangerous mode (skip permission prompts) during plan generation",
   ),
@@ -61,7 +62,6 @@ const plan = Effect.fnUntraced(
 
     const exitCode = yield* pipe(
       cliAgent.commandPlan({
-        outputMode: "inherit",
         prompt: promptGen.planPrompt(options),
         prdFilePath: pathService.join(worktree.directory, ".lalph", "prd.yml"),
         dangerous: options.dangerous,

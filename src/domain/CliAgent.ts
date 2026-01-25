@@ -1,21 +1,42 @@
-import { Data } from "effect"
+import { Data, PlatformError, Stream } from "effect"
 import { ChildProcess } from "effect/unstable/process"
+import { claudeOutputTransformer } from "../CliAgent/claude.ts"
 
 export class CliAgent extends Data.Class<{
   id: string
   name: string
+  outputTransformer?: OutputTransformer | undefined
   command: (options: {
     readonly outputMode: "pipe" | "inherit"
     readonly prompt: string
     readonly prdFilePath: string
   }) => ChildProcess.Command
+  commandChoose?: (options: {
+    readonly prompt: string
+    readonly prdFilePath: string
+  }) => ChildProcess.Command
   commandPlan: (options: {
-    readonly outputMode: "pipe" | "inherit"
     readonly prompt: string
     readonly prdFilePath: string
     readonly dangerous: boolean
   }) => ChildProcess.Command
-}> {}
+}> {
+  resolveCommandChoose(options: {
+    readonly prompt: string
+    readonly prdFilePath: string
+  }) {
+    return this.commandChoose
+      ? this.commandChoose(options)
+      : this.command({
+          ...options,
+          outputMode: "inherit",
+        })
+  }
+}
+
+export type OutputTransformer = (
+  stream: Stream.Stream<string, PlatformError.PlatformError>,
+) => Stream.Stream<string, PlatformError.PlatformError>
 
 const opencode = new CliAgent({
   id: "opencode",
@@ -30,7 +51,7 @@ const opencode = new CliAgent({
       stderr: outputMode,
       stdin: "inherit",
     })`opencode run ${prompt} -f ${prdFilePath}`,
-  commandPlan: ({ outputMode, prompt, prdFilePath, dangerous }) =>
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
     ChildProcess.make({
       extendEnv: true,
       ...(dangerous
@@ -40,8 +61,8 @@ const opencode = new CliAgent({
             },
           }
         : {}),
-      stdout: outputMode,
-      stderr: outputMode,
+      stdout: "inherit",
+      stderr: "inherit",
       stdin: "inherit",
     })`opencode --prompt ${`@${prdFilePath}
 
@@ -56,23 +77,33 @@ const claude = new CliAgent({
       stdout: outputMode,
       stderr: outputMode,
       stdin: "inherit",
-    })`claude --dangerously-skip-permissions --output-format stream-json -p ${`@${prdFilePath}
+    })`claude --dangerously-skip-permissions --output-format stream-json --verbose -p ${`@${prdFilePath}
 
 ${prompt}`}`,
-  commandPlan: ({ outputMode, prompt, prdFilePath, dangerous }) => {
-    const run = ChildProcess.make({
-      stdout: outputMode,
-      stderr: outputMode,
+  outputTransformer: claudeOutputTransformer,
+  commandChoose: ({ prompt, prdFilePath }) =>
+    ChildProcess.make({
+      stdout: "inherit",
+      stderr: "inherit",
       stdin: "inherit",
-    })
-    return dangerous
-      ? run`claude --dangerously-skip-permissions ${`@${prdFilePath}
+    })`claude --dangerously-skip-permissions -p ${`@${prdFilePath}
 
-${prompt}`}`
-      : run`claude ${`@${prdFilePath}
+${prompt}`}`,
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
+    ChildProcess.make(
+      "claude",
+      [
+        ...(dangerous ? ["--dangerously-skip-permissions"] : []),
+        `@${prdFilePath}
 
-${prompt}`}`
-  },
+${prompt}`,
+      ],
+      {
+        stdout: "inherit",
+        stderr: "inherit",
+        stdin: "inherit",
+      },
+    ),
 })
 
 const codex = new CliAgent({
@@ -86,20 +117,21 @@ const codex = new CliAgent({
     })`codex exec --dangerously-bypass-approvals-and-sandbox ${`@${prdFilePath}
 
 ${prompt}`}`,
-  commandPlan: ({ outputMode, prompt, prdFilePath, dangerous }) => {
-    const run = ChildProcess.make({
-      stdout: outputMode,
-      stderr: outputMode,
-      stdin: "inherit",
-    })
-    return dangerous
-      ? run`codex --dangerously-bypass-approvals-and-sandbox ${`@${prdFilePath}
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
+    ChildProcess.make(
+      "codex",
+      [
+        ...(dangerous ? ["--dangerously-bypass-approvals-and-sandbox"] : []),
+        `@${prdFilePath}
 
-${prompt}`}`
-      : run`codex ${`@${prdFilePath}
-
-${prompt}`}`
-  },
+${prompt}`,
+      ],
+      {
+        stdout: "inherit",
+        stderr: "inherit",
+        stdin: "inherit",
+      },
+    ),
 })
 
 const amp = new CliAgent({
@@ -113,10 +145,10 @@ const amp = new CliAgent({
     })`amp --dangerously-allow-all --stream-json-thinking -x ${`@${prdFilePath}
 
 ${prompt}`}`,
-  commandPlan: ({ outputMode }) =>
+  commandPlan: () =>
     ChildProcess.make({
-      stdout: outputMode,
-      stderr: outputMode,
+      stdout: "inherit",
+      stderr: "inherit",
       stdin: "inherit",
     })`echo ${"Plan mode is not supported for amp."}`,
 })
