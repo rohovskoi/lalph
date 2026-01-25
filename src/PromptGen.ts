@@ -189,6 +189,8 @@ ${prdNotes(options)}`
    Read the "### Adding tasks" section below **extremely carefully** for guidelines on creating tasks.
 3. Wait until the tasks are saved, then setup task dependencies using the \`blockedBy\` field.
 4. Start a subagent with a copy of this prompt, to review the plan and provide feedback or improvements.
+5. Present the saved specification for review (include the full text in your response).
+   If any corrections are needed, update the specification and adjust the plan tasks accordingly.
 
 **Important:** You are only creating or updating a plan, not implementing any tasks yet.
 
