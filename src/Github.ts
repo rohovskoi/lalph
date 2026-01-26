@@ -8,6 +8,7 @@ import {
   Option,
   pipe,
   RcMap,
+  Schedule,
   Schema,
   ServiceMap,
   Stream,
@@ -366,6 +367,25 @@ export const GithubIssueSource = Layer.effect(
             issue_number: Number(issueId.slice(1)),
             state: "closed",
           })
+        },
+        Effect.mapError((cause) => new IssueSourceError({ cause })),
+      ),
+      ensureInProgress: Effect.fnUntraced(
+        function* (issueId: string) {
+          const issueNumber = Number(issueId.slice(1))
+          yield* pipe(
+            github.request((rest) =>
+              rest.issues.get({
+                owner: cli.owner,
+                repo: cli.repo,
+                issue_number: issueNumber,
+              }),
+            ),
+            Effect.repeat({
+              until: (r) => hasLabel(r.data.labels, "in-progress"),
+              schedule: Schedule.spaced("1 second"),
+            }),
+          )
         },
         Effect.mapError((cause) => new IssueSourceError({ cause })),
       ),

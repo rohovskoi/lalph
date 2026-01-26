@@ -24,7 +24,7 @@ import { ChildProcess } from "effect/unstable/process"
 import { Worktree } from "../Worktree.ts"
 import { getCommandPrefix, getOrSelectCliAgent } from "./agent.ts"
 import { Flag, CliError, Command } from "effect/unstable/cli"
-import { checkForWork, resetInProgress } from "../IssueSource.ts"
+import { checkForWork, IssueSource, resetInProgress } from "../IssueSource.ts"
 import { CurrentIssueSource } from "../IssueSources.ts"
 import { GithubCli } from "../Github/Cli.ts"
 
@@ -124,11 +124,14 @@ export const commandRoot = Command.make("lalph", {
       const semaphore = Effect.makeSemaphoreUnsafe(runConcurrency)
       const fibers = yield* FiberSet.make()
 
+      yield* resetInProgress.pipe(Effect.provide(source))
+
       yield* Effect.log(
         `Executing ${iterationsDisplay} iteration(s) with concurrency ${runConcurrency}`,
       )
-
-      yield* resetInProgress.pipe(Effect.provide(source))
+      if (Option.isSome(targetBranch)) {
+        yield* Effect.log(`Using target branch: ${targetBranch.value}`)
+      }
 
       let iteration = 0
       let quit = false
@@ -219,6 +222,7 @@ const run = Effect.fnUntraced(
     const gh = yield* GithubCli
     const cliAgent = yield* getOrSelectCliAgent
     const prd = yield* Prd
+    const source = yield* IssueSource
 
     const exec = (
       template: TemplateStringsArray,
@@ -316,8 +320,23 @@ const run = Effect.fnUntraced(
       const taskJson = yield* fs.readFileString(
         pathService.join(worktree.directory, ".lalph", "task.json"),
       )
-      const chosenTask = yield* Schema.decodeEffect(ChosenTask)(taskJson)
+      const chosenTask = yield* Schema.decodeEffect(ChosenTask)(taskJson).pipe(
+        Effect.mapError(() => new ChosenTaskNotFound()),
+        Effect.tap(
+          Effect.fnUntraced(function* (task) {
+            const prdTask = yield* prd.findById(task.id)
+            if (prdTask?.state === "in-progress") return
+            return yield* new ChosenTaskNotFound()
+          }),
+        ),
+      )
       taskId = chosenTask.id
+      yield* source.ensureInProgress(taskId).pipe(
+        Effect.timeoutOrElse({
+          duration: "1 minute",
+          onTimeout: () => Effect.fail(new RunnerStalled()),
+        }),
+      )
 
       yield* Deferred.completeWith(options.startedDeferred, Effect.void)
 
@@ -407,6 +426,10 @@ const run = Effect.fnUntraced(
 
 class RunnerStalled extends Data.TaggedError("RunnerStalled") {
   readonly message = "The runner has stalled due to inactivity."
+}
+
+class ChosenTaskNotFound extends Data.TaggedError("ChosenTaskNotFound") {
+  readonly message = "The AI agent failed to choose a task."
 }
 
 const ChosenTask = Schema.fromJsonString(

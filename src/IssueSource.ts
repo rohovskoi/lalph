@@ -21,6 +21,10 @@ export class IssueSource extends ServiceMap.Service<
     readonly cancelIssue: (
       issueId: string,
     ) => Effect.Effect<void, IssueSourceError>
+
+    readonly ensureInProgress: (
+      issueId: string,
+    ) => Effect.Effect<void, IssueSourceError>
   }
 >()("lalph/IssueSource") {}
 

@@ -380,6 +380,8 @@ export const LinearIssueSource = Layer.effect(
         },
         Effect.mapError((cause) => new IssueSourceError({ cause })),
       ),
+      // linear api writes and reflected immediately in reads, so no-op
+      ensureInProgress: () => Effect.void,
     })
   }),
 ).pipe(Layer.provide(Linear.layer))
