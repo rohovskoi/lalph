@@ -167,9 +167,9 @@ ${options.task.description}
    - Add important discoveries about the codebase, or challenges faced to the task's
      \`description\`. More details below.
 4. Run any checks / feedback loops, such as type checks, unit tests, or linting.
-5. ${!options.githubPrNumber ? `Create a pull request for this task.${options.targetBranch ? ` The target branch for the PR should be \`${options.targetBranch}\`. If the target branch does not exist, create it first.` : ""}` : "Commit and push your changes to the pull request."}
+5. ${!options.githubPrNumber ? `Create a pull request for this task. If the target branch does not exist, create it first.` : "Commit and push your changes to the pull request."}
    ${sourceMeta.githubPrInstructions}
-   The PR description should include a summary of the changes made.
+   The PR description should include a summary of the changes made.${options.targetBranch ? `\n   - The target branch for the PR should be \`${options.targetBranch}\`.` : ""}
    - **DO NOT** commit any of the files in the \`.lalph\` directory.
    - You have permission to create or update the PR as needed. You have full permission to push branches, create PRs or create git commits.
 6. Update the prd.yml file to reflect any changes in task states.
