@@ -69,7 +69,7 @@ export class Prd extends ServiceMap.Service<
     }, syncSemaphore.withPermit)
 
     const mergeConflictInstruction =
-      "Next step: Rebase PR and resolve merge conflicts."
+      "**Before doing anything else**: rebase the PR against the target branch, and resolve any merge conflicts."
 
     const flagUnmergable = Effect.fnUntraced(function* (options: {
       readonly issueId: string
@@ -82,7 +82,7 @@ export class Prd extends ServiceMap.Service<
       )
       const nextDescription = hasInstruction
         ? issue.description
-        : `${mergeConflictInstruction}\n\n${issue.description.trim()}`
+        : `${mergeConflictInstruction}\n\n---\n\nPrevious description:\n\n${issue.description.trim()}`
 
       yield* source.updateIssue({
         issueId: issue.id!,
