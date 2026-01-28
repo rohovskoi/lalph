@@ -6,9 +6,7 @@ export const makeWaitForFile = Effect.gen(function* () {
   return (directory: string, name: string) =>
     pipe(
       fs.watch(directory),
-      Stream.filter(
-        (e) => e._tag === "Create" && pathService.basename(e.path) === name,
-      ),
+      Stream.filter((e) => pathService.basename(e.path) === name),
       Stream.runHead,
     )
 })
