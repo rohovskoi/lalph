@@ -307,7 +307,10 @@ const run = Effect.fnUntraced(
       )
 
     if (Option.isSome(options.targetBranch)) {
-      yield* exec`git checkout ${`origin/${options.targetBranch.value}`}`
+      const targetWithRemote = options.targetBranch.value.includes("/")
+        ? options.targetBranch.value
+        : `origin/${options.targetBranch.value}`
+      yield* exec`git checkout ${targetWithRemote}`
     }
 
     yield* Effect.gen(function* () {
