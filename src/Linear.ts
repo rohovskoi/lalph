@@ -560,7 +560,8 @@ const allIssuesNoLabelQuery = `query allIssues($projectId: ID!) {
       project: { id: { eq: $projectId } }
       assignee: { isMe: { eq: true } }
       state: { type: { in: ["unstarted", "started", "completed"] } }
-    }
+    },
+    sort: { createdAt: { order: Ascending } }
   ) {
     nodes {
       ${issueQueryFields}
@@ -576,7 +577,8 @@ const allIssuesQuery = `query allIssues($projectId: ID!, $labelId: ID!) {
       assignee: { isMe: { eq: true } }
       labels: { id: { eq: $labelId } }
       state: { type: { in: ["unstarted", "started", "completed"] } }
-    }
+    },
+    sort: { createdAt: { order: Ascending } }
   ) {
     nodes {
       ${issueQueryFields}
