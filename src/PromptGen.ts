@@ -149,12 +149,12 @@ do some quick research to understand the task before writing the instructions.
 
 Save the instructions in a markdown file called ".lalph/instructions.md".
 
-**Do not** start working on the task yet, only output the instructions.
+**DO NOT** start working on the task yet, only output the instructions.
 Do everything you can to help the agent succeed.
 
 "Help others achieve their dreams and you will achieve yours."
 
-# The task
+# The task (do not implement yet)
 
 ID: ${options.task.id}
 Task: ${options.task.title}
