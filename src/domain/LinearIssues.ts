@@ -19,6 +19,7 @@ export class State extends S.Class<State>("State")({
 export class Issue extends S.Class<Issue>("Issue")({
   id: S.String,
   identifier: S.String,
+  state: State,
 }) {}
 
 export class InverseRelationsNode extends S.Class<InverseRelationsNode>(
@@ -46,7 +47,14 @@ export class IssuesNode extends S.Class<IssuesNode>("IssuesNode")({
   labelIds: S.Array(S.String),
   inverseRelations: InverseRelations,
   completedAt: S.NullOr(S.DateTimeUtc),
-}) {}
+}) {
+  readonly blockedBy = this.inverseRelations.nodes.filter(
+    (relation) =>
+      relation.type === "blocks" &&
+      incompleteStates.has(relation.issue.state.type),
+  )
+}
+const incompleteStates = new Set<Type>(["unstarted", "started"])
 
 export const LinearIssueData = S.Struct({
   issue: IssuesNode,

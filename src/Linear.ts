@@ -239,24 +239,22 @@ export const LinearIssueSource = Layer.effect(
             if (!completedAt) return true
             return DateTime.isGreaterThanOrEqualTo(completedAt, threeDaysAgo)
           }),
-          Array.map((issue) => {
-            const blocks = issue.inverseRelations.nodes.filter(
-              (r) => r.type === "blocks",
-            )
-            return new PrdIssue({
-              id: issue.identifier,
-              title: issue.title,
-              description: issue.description ?? "",
-              priority: issue.priority,
-              estimate: issue.estimate ?? null,
-              state: linearStateToPrdState(issue.state),
-              blockedBy: blocks.map((r) => r.issue.identifier),
-              autoMerge: autoMergeLabelId.pipe(
-                Option.map((labelId) => issue.labelIds.includes(labelId)),
-                Option.getOrElse(() => false),
-              ),
-            })
-          }),
+          Array.map(
+            (issue) =>
+              new PrdIssue({
+                id: issue.identifier,
+                title: issue.title,
+                description: issue.description ?? "",
+                priority: issue.priority,
+                estimate: issue.estimate ?? null,
+                state: linearStateToPrdState(issue.state),
+                blockedBy: issue.blockedBy.map((r) => r.issue.identifier),
+                autoMerge: autoMergeLabelId.pipe(
+                  Option.map((labelId) => issue.labelIds.includes(labelId)),
+                  Option.getOrElse(() => false),
+                ),
+              }),
+          ),
         )
       }),
     )
@@ -335,9 +333,7 @@ export const LinearIssueSource = Layer.effect(
           })
 
           const linearIssue = yield* linear.issueById(issueId)
-          const existingBlockers = linearIssue.inverseRelations.nodes.filter(
-            (r) => r.type === "blocks",
-          )
+          const existingBlockers = linearIssue.blockedBy
 
           const toAdd = blockedBy.filter(
             (blockerIssueId) =>
@@ -547,6 +543,11 @@ const issueQueryFields = `
       issue {
         id
         identifier
+        state {
+          id
+          name
+          type
+        }
       }
     }
   }
