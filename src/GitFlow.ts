@@ -132,7 +132,7 @@ After making any changes, commit them to the same branch. Do not git push your c
           )
         }
         const parsed = parseBranch(targetBranch)
-        yield* worktree.exec`git fetch ${parsed.branchWithRemote}`
+        yield* worktree.exec`git fetch ${parsed.remote}`
         const rebaseResult =
           yield* worktree.exec`git rebase ${parsed.branchWithRemote}`
         if (rebaseResult !== 0) {
