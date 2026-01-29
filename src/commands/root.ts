@@ -127,7 +127,7 @@ const run = Effect.fnUntraced(
       githubPrNumber: chosenTask.githubPrNumber ?? undefined,
     }).pipe(Effect.withSpan("run.agentInstructor"))
 
-    yield* Effect.gen(function* () {
+    const postWorkPrState = yield* Effect.gen(function* () {
       // 3. Work on task
       const exitCode = yield* agentWorker({
         specsDirectory: options.specsDirectory,
@@ -138,8 +138,12 @@ const run = Effect.fnUntraced(
       }).pipe(Effect.withSpan("run.agentWorker"))
       yield* Effect.log(`Agent exited with code: ${exitCode}`)
 
+      const prState = (yield* worktree.viewPrState()).pipe(
+        Option.filter((pr) => pr.state === "OPEN"),
+      )
+
       // 4. Review task
-      if (options.review) {
+      if (options.review && Option.isSome(prState)) {
         yield* agentReviewer({
           specsDirectory: options.specsDirectory,
           stallTimeout: options.stallTimeout,
@@ -148,6 +152,8 @@ const run = Effect.fnUntraced(
           instructions,
         }).pipe(Effect.withSpan("run.agentReviewer"))
       }
+
+      return prState
     }).pipe(
       Effect.timeout(options.runTimeout),
       Effect.tapErrorTag("TimeoutError", () =>
@@ -164,7 +170,7 @@ const run = Effect.fnUntraced(
     // Auto-merge logic
 
     const autoMerge = Effect.gen(function* () {
-      let prState = yield* worktree.viewPrState()
+      let prState = postWorkPrState
       yield* Effect.log("PR state", prState)
       if (Option.isNone(prState)) {
         return yield* prd.maybeRevertIssue({ issueId: taskId })
