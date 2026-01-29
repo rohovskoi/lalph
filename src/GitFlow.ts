@@ -119,7 +119,7 @@ export const GitFlowCommit = Layer.effect(
         `You are already on a new branch for this task. You do not need to checkout any other branches.`,
 
       commitInstructions:
-        () => `When you have completed your changes, commit them to the current local branch. Do not git push your changes or switch branches.
+        () => `When you have completed your changes, **you must** commit them to the current local branch. Do not git push your changes or switch branches.
    - **DO NOT** commit any of the files in the \`.lalph\` directory.`,
 
       reviewInstructions: `You are already on the branch with their changes.
