@@ -1,13 +1,15 @@
-import { Data, Exit } from "effect"
+import { Data, DateTime, Exit } from "effect"
 
 export class WorkerState extends Data.Class<{
   iteration: number
   status: WorkerStatus
+  lastTransitionAt: DateTime.Utc
 }> {
   static initial(iteration: number) {
     return new WorkerState({
       iteration,
       status: WorkerStatus.Booting(),
+      lastTransitionAt: DateTime.nowUnsafe(),
     })
   }
 
@@ -15,6 +17,7 @@ export class WorkerState extends Data.Class<{
     return new WorkerState({
       iteration: this.iteration,
       status,
+      lastTransitionAt: DateTime.nowUnsafe(),
     })
   }
 

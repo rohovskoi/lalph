@@ -67,7 +67,7 @@ export class Worktree extends ServiceMap.Service<Worktree>()("lalph/Worktree", {
       inExisting,
       ...(yield* makeExecHelpers({ directory })),
     } as const
-  }),
+  }).pipe(Effect.withSpan("Worktree.build")),
 }) {
   static layer = Layer.effect(this, this.make)
   static layerLocal = Layer.effect(
