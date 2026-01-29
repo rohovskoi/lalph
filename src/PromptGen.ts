@@ -154,7 +154,7 @@ Do everything you can to help the agent succeed.
 
 "Help others achieve their dreams and you will achieve yours."
 
-# The task (do not implement yet)
+# The task
 
 ID: ${options.task.id}
 Task: ${options.task.title}
