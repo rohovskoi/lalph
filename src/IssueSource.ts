@@ -1,7 +1,6 @@
-import { Effect, Layer, Schedule, Schema, ServiceMap, Stream } from "effect"
+import { Effect, Schema, ServiceMap } from "effect"
 import type { PrdIssue } from "./domain/PrdIssue.ts"
-import { Atom } from "effect/unstable/reactivity"
-import { makeAtomRuntime } from "./shared/runtime.ts"
+import { Reactivity } from "effect/unstable/reactivity"
 
 export class IssueSource extends ServiceMap.Service<
   IssueSource,
@@ -28,33 +27,21 @@ export class IssueSource extends ServiceMap.Service<
       issueId: string,
     ) => Effect.Effect<void, IssueSourceError>
   }
->()("lalph/IssueSource") {}
-
-export const currentIssuesAtom = Atom.make<ReadonlyArray<PrdIssue>>([]).pipe(
-  makeAtomRuntime.withReactivity([""]),
-)
-
-export class IssueSourceUpdates extends ServiceMap.Service<IssueSourceUpdates>()(
-  "lalph/IssueSourceUpdates",
-  {
-    make: Effect.gen(function* () {
-      const source = yield* IssueSource
-      const updates = yield* Stream.fromEffectSchedule(
-        source.issues,
-        Schedule.spaced("1 minute"),
-      ).pipe(
-        Stream.retry(Schedule.spaced("10 seconds")),
-        Stream.orDie,
-        Stream.share({
-          capacity: 1,
-          strategy: "dropping",
-        }),
-      )
-      return updates
-    }),
-  },
-) {
-  static layer = Layer.effect(this, this.make)
+>()("lalph/IssueSource") {
+  static make(impl: IssueSource["Service"]) {
+    return Effect.gen(function* () {
+      const reactivity = yield* Reactivity.Reactivity
+      return IssueSource.of({
+        ...impl,
+        createIssue: (issue) =>
+          reactivity.mutation(["issues"], impl.createIssue(issue)),
+        updateIssue: (options) =>
+          reactivity.mutation(["issues"], impl.updateIssue(options)),
+        cancelIssue: (issueId) =>
+          reactivity.mutation(["issues"], impl.cancelIssue(issueId)),
+      })
+    })
+  }
 }
 
 export class IssueSourceError extends Schema.ErrorClass<IssueSourceError>(
@@ -63,41 +50,3 @@ export class IssueSourceError extends Schema.ErrorClass<IssueSourceError>(
   _tag: Schema.tag("IssueSourceError"),
   cause: Schema.Defect,
 }) {}
-
-export const checkForWork = Effect.gen(function* () {
-  const source = yield* IssueSource
-  const issues = yield* source.issues
-  const hasIncomplete = issues.some(
-    (issue) => issue.state === "todo" && issue.blockedBy.length === 0,
-  )
-  if (!hasIncomplete) {
-    return yield* new NoMoreWork({})
-  }
-})
-
-export const resetInProgress = Effect.gen(function* () {
-  const source = yield* IssueSource
-  const issues = yield* source.issues
-  const inProgress = issues.filter(
-    (issue): issue is PrdIssue & { id: string } =>
-      issue.state === "in-progress" && issue.id !== null,
-  )
-  if (inProgress.length === 0) return
-  yield* Effect.forEach(
-    inProgress,
-    (issue) =>
-      source.updateIssue({
-        issueId: issue.id,
-        state: "todo",
-      }),
-    { concurrency: 5, discard: true },
-  )
-})
-
-export class NoMoreWork extends Schema.ErrorClass<NoMoreWork>(
-  "lalph/Prd/NoMoreWork",
-)({
-  _tag: Schema.tag("NoMoreWork"),
-}) {
-  readonly message = "No more work to be done!"
-}

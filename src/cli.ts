@@ -2,7 +2,7 @@
 
 import { Command } from "effect/unstable/cli"
 import { Effect, Layer } from "effect"
-import { NodeRuntime, NodeServices } from "@effect/platform-node"
+import { NodeRuntime } from "@effect/platform-node"
 import { Settings } from "./Settings.ts"
 import { commandRoot } from "./commands/root.ts"
 import { commandPlan } from "./commands/plan.ts"
@@ -16,6 +16,7 @@ import { resetCurrentIssueSource } from "./IssueSources.ts"
 import { TracingLayer } from "./Tracing.ts"
 import { MinimumLogLevel } from "effect/References"
 import { lalphMemoMap } from "./shared/runtime.ts"
+import { PlatformServices } from "./shared/platform.ts"
 
 commandRoot.pipe(
   Command.withSubcommands([
@@ -43,7 +44,7 @@ commandRoot.pipe(
     Command.run(_, {
       version: PackageJson.version,
     }),
-  Effect.provide(NodeServices.layer),
+  Effect.provide(PlatformServices),
   Effect.provideService(Layer.CurrentMemoMap, lalphMemoMap),
   NodeRuntime.runMain,
 )

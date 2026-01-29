@@ -21,6 +21,7 @@ import { Setting } from "./Settings.ts"
 import { Prompt } from "effect/unstable/cli"
 import { TokenManager } from "./Github/TokenManager.ts"
 import { GithubCli } from "./Github/Cli.ts"
+import { Reactivity } from "effect/unstable/reactivity"
 
 export class GithubError extends Data.TaggedError("GithubError")<{
   readonly cause: unknown
@@ -235,7 +236,7 @@ export const GithubIssueSource = Layer.effect(
       )
     })
 
-    return IssueSource.of({
+    return yield* IssueSource.make({
       issues,
       createIssue: Effect.fnUntraced(
         function* (issue: PrdIssue) {
@@ -393,7 +394,7 @@ export const GithubIssueSource = Layer.effect(
       ),
     })
   }),
-).pipe(Layer.provide([Github.layer, GithubCli.layer]))
+).pipe(Layer.provide([Github.layer, GithubCli.layer, Reactivity.layer]))
 
 export class GithubRepoNotFound extends Data.TaggedError("GithubRepoNotFound") {
   readonly message = "GitHub repository not found"

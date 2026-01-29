@@ -17,8 +17,12 @@ import { ChildProcess } from "effect/unstable/process"
 import { Worktree } from "../Worktree.ts"
 import { getCommandPrefix, getOrSelectCliAgent } from "./agent.ts"
 import { Flag, CliError, Command } from "effect/unstable/cli"
-import { checkForWork, IssueSource, resetInProgress } from "../IssueSource.ts"
-import { CurrentIssueSource } from "../IssueSources.ts"
+import { IssueSource } from "../IssueSource.ts"
+import {
+  checkForWork,
+  CurrentIssueSource,
+  resetInProgress,
+} from "../IssueSources.ts"
 import { GithubCli } from "../Github/Cli.ts"
 import { agentInstructor } from "../Agents/instructor.ts"
 import { agentWorker } from "../Agents/worker.ts"
@@ -27,6 +31,7 @@ import { RunnerStalled } from "../domain/Errors.ts"
 import { agentReviewer } from "../Agents/reviewer.ts"
 import { agentTimeout } from "../Agents/timeout.ts"
 import { Settings } from "../Settings.ts"
+import { AtomRegistry, Reactivity } from "effect/unstable/reactivity"
 
 // Main iteration run logic
 
@@ -397,6 +402,8 @@ export const commandRoot = Command.make("lalph", {
         GithubCli.layer,
         Settings.layer,
         CurrentIssueSource.layer,
+        AtomRegistry.layer,
+        Reactivity.layer,
       ]),
     ),
   ),

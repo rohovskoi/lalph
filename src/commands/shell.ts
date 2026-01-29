@@ -1,6 +1,5 @@
 import { Command } from "effect/unstable/cli"
-import { CurrentIssueSource } from "../IssueSources.ts"
-import { Effect, FileSystem, Layer, Path } from "effect"
+import { Effect, FileSystem, Path } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import { Prd } from "../Prd.ts"
 import { Worktree } from "../Worktree.ts"
@@ -28,7 +27,7 @@ export const commandShell = Command.make("shell").pipe(
         }).pipe(ChildProcess.exitCode)
       },
       Effect.scoped,
-      Effect.provide(Prd.layer.pipe(Layer.provide(CurrentIssueSource.layer))),
+      Effect.provide(Prd.layerProvided),
     ),
   ),
 )

@@ -26,6 +26,7 @@ import {
   LinearIssuesData,
   State,
 } from "./domain/LinearIssues.ts"
+import { Reactivity } from "effect/unstable/reactivity"
 
 class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
   make: Effect.gen(function* () {
@@ -259,7 +260,7 @@ export const LinearIssueSource = Layer.effect(
       }),
     )
 
-    return IssueSource.of({
+    return yield* IssueSource.make({
       issues,
       createIssue: Effect.fnUntraced(
         function* (issue: PrdIssue) {
@@ -387,7 +388,7 @@ export const LinearIssueSource = Layer.effect(
       ensureInProgress: () => Effect.void,
     })
   }),
-).pipe(Layer.provide(Linear.layer))
+).pipe(Layer.provide([Linear.layer, Reactivity.layer]))
 
 export const resetLinear = Effect.gen(function* () {
   yield* selectedProjectId.set(Option.none())

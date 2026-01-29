@@ -1,4 +1,4 @@
-import { Effect, FileSystem, Layer, Option, Path, pipe } from "effect"
+import { Effect, FileSystem, Option, Path, pipe } from "effect"
 import { PromptGen } from "../PromptGen.ts"
 import { Prd } from "../Prd.ts"
 import { ChildProcess } from "effect/unstable/process"
@@ -91,7 +91,7 @@ const plan = Effect.fnUntraced(
   Effect.scoped,
   Effect.provide([
     PromptGen.layer,
-    Prd.layer.pipe(Layer.provide(CurrentIssueSource.layer)),
+    Prd.layerProvided,
     Worktree.layer,
     Settings.layer,
     CurrentIssueSource.layer,

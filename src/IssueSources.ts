@@ -1,9 +1,13 @@
-import { Effect, Layer, Option, Schema, ServiceMap } from "effect"
+import { Effect, Layer, Option, pipe, Schema, ServiceMap } from "effect"
 import { Setting, Settings } from "./Settings.ts"
 import { LinearIssueSource, resetLinear } from "./Linear.ts"
 import { Prompt } from "effect/unstable/cli"
 import { GithubIssueSource, resetGithub } from "./Github.ts"
-import { IssueSourceUpdates, type IssueSource } from "./IssueSource.ts"
+import { IssueSource } from "./IssueSource.ts"
+import { PlatformServices } from "./shared/platform.ts"
+import { makeAtomRuntime as atomRuntime } from "./shared/runtime.ts"
+import { Atom, Reactivity } from "effect/unstable/reactivity"
+import type { PrdIssue } from "./domain/PrdIssue.ts"
 
 const issueSources: ReadonlyArray<typeof CurrentIssueSource.Service> = [
   {
@@ -70,10 +74,72 @@ export class CurrentIssueSource extends ServiceMap.Service<
   static layer = Layer.effectServices(
     Effect.gen(function* () {
       const source = yield* getOrSelectIssueSource
-      const services = yield* Layer.build(
-        IssueSourceUpdates.layer.pipe(Layer.provideMerge(source.layer)),
-      ).pipe(Effect.withSpan("CurrentIssueSource.build"))
+      const services = yield* Layer.build(source.layer).pipe(
+        Effect.withSpan("CurrentIssueSource.build"),
+      )
       return ServiceMap.add(services, CurrentIssueSource, source)
     }),
-  ).pipe(Layer.provide(Settings.layer))
+  ).pipe(Layer.provide([Settings.layer, PlatformServices]))
+}
+
+// Atoms
+
+export const issueSourceRuntime = atomRuntime(
+  CurrentIssueSource.layer.pipe(Layer.orDie),
+)
+
+export const currentIssuesAtom = pipe(
+  issueSourceRuntime.atom(
+    Effect.fnUntraced(function* (get) {
+      const source = yield* IssueSource
+      const issues = yield* source.issues
+      const handle = setTimeout(() => {
+        get.refreshSelf()
+      }, 30000)
+      get.addFinalizer(() => clearTimeout(handle))
+      return issues
+    }),
+  ),
+  atomRuntime.withReactivity(["issues"]),
+  Atom.keepAlive,
+)
+
+// Helpers
+
+export const checkForWork = Effect.gen(function* () {
+  const issues = yield* Atom.getResult(currentIssuesAtom)
+  const hasIncomplete = issues.some(
+    (issue) => issue.state === "todo" && issue.blockedBy.length === 0,
+  )
+  if (!hasIncomplete) {
+    return yield* new NoMoreWork({})
+  }
+})
+
+export const resetInProgress = Effect.gen(function* () {
+  const source = yield* IssueSource
+  const reactivity = yield* Reactivity.Reactivity
+  const issues = yield* Atom.getResult(currentIssuesAtom)
+  const inProgress = issues.filter(
+    (issue): issue is PrdIssue & { id: string } =>
+      issue.state === "in-progress" && issue.id !== null,
+  )
+  if (inProgress.length === 0) return
+  yield* Effect.forEach(
+    inProgress,
+    (issue) =>
+      source.updateIssue({
+        issueId: issue.id,
+        state: "todo",
+      }),
+    { concurrency: 5, discard: true },
+  ).pipe(reactivity.withBatch)
+})
+
+export class NoMoreWork extends Schema.ErrorClass<NoMoreWork>(
+  "lalph/Prd/NoMoreWork",
+)({
+  _tag: Schema.tag("NoMoreWork"),
+}) {
+  readonly message = "No more work to be done!"
 }

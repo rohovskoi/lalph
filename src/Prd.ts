@@ -12,11 +12,9 @@ import {
 } from "effect"
 import { Worktree } from "./Worktree.ts"
 import { PrdIssue } from "./domain/PrdIssue.ts"
-import {
-  IssueSource,
-  IssueSourceError,
-  IssueSourceUpdates,
-} from "./IssueSource.ts"
+import { IssueSource, IssueSourceError } from "./IssueSource.ts"
+import { AtomRegistry, Reactivity } from "effect/unstable/reactivity"
+import { CurrentIssueSource, currentIssuesAtom } from "./IssueSources.ts"
 
 export class Prd extends ServiceMap.Service<
   Prd,
@@ -34,8 +32,10 @@ export class Prd extends ServiceMap.Service<
     }) => Effect.Effect<void, IssueSourceError>
     readonly findById: (
       issueId: string,
-    ) => Effect.Effect<PrdIssue | null, PlatformError.PlatformError>
-
+    ) => Effect.Effect<
+      PrdIssue | null,
+      PlatformError.PlatformError | IssueSourceError
+    >
     readonly setChosenIssueId: (issueId: string | null) => Effect.Effect<void>
   }
 >()("lalph/Prd", {
@@ -43,8 +43,9 @@ export class Prd extends ServiceMap.Service<
     const worktree = yield* Worktree
     const pathService = yield* Path.Path
     const fs = yield* FileSystem.FileSystem
+    const reactivity = yield* Reactivity.Reactivity
     const source = yield* IssueSource
-    const sourceUpdates = yield* IssueSourceUpdates
+    const registry = yield* AtomRegistry.AtomRegistry
     let chosenIssueId: string | null = null
 
     const lalphDir = pathService.join(worktree.directory, `.lalph`)
@@ -74,6 +75,7 @@ export class Prd extends ServiceMap.Service<
     const flagUnmergable = Effect.fnUntraced(function* (options: {
       readonly issueId: string
     }) {
+      const current = yield* AtomRegistry.getResult(registry, currentIssuesAtom)
       const issue = current.find((entry) => entry.id === options.issueId)
       if (!issue) return
 
@@ -122,12 +124,17 @@ export class Prd extends ServiceMap.Service<
 
     yield* Effect.addFinalizer(() => Effect.ignore(fs.remove(prdFile)))
 
-    let current = yield* source.issues
-    yield* fs.writeFileString(prdFile, PrdIssue.arrayToYaml(current))
+    yield* fs.writeFileString(
+      prdFile,
+      PrdIssue.arrayToYaml(
+        yield* AtomRegistry.getResult(registry, currentIssuesAtom),
+      ),
+    )
 
     const updatedIssues = new Map<string, PrdIssue>()
 
     const sync = Effect.gen(function* () {
+      const current = yield* AtomRegistry.getResult(registry, currentIssuesAtom)
       const updated = yield* readPrd
       const anyChanges =
         updated.length !== current.length ||
@@ -166,10 +173,8 @@ export class Prd extends ServiceMap.Service<
         (issueId) => source.cancelIssue(issueId),
         { concurrency: "unbounded" },
       )
-
-      current = yield* source.issues
-      yield* fs.writeFileString(prdFile, PrdIssue.arrayToYaml(current))
     }).pipe(
+      reactivity.withBatch,
       Effect.uninterruptible,
       syncSemaphore.withPermit,
       Effect.withSpan("Prd.sync"),
@@ -185,21 +190,18 @@ export class Prd extends ServiceMap.Service<
     const updateSyncHandle = yield* FiberHandle.make()
     const updateSync = Effect.fnUntraced(
       function* (sourceIssues: ReadonlyArray<PrdIssue>) {
-        const tempFile = yield* fs.makeTempFileScoped()
-        const anyChanges =
-          sourceIssues.length !== current.length ||
-          sourceIssues.some((u, i) => u.isChangedComparedTo(current[i]!))
-        if (!anyChanges) return
-
-        yield* fs.writeFileString(tempFile, PrdIssue.arrayToYaml(sourceIssues))
-        yield* fs.rename(tempFile, prdFile)
-        current = sourceIssues
+        const currentYaml = (yield* fs.readFileString(prdFile)).trim()
+        const nextYaml = PrdIssue.arrayToYaml(sourceIssues).trim()
+        if (currentYaml === nextYaml) return
+        yield* fs.writeFileString(prdFile, nextYaml)
       },
       Effect.scoped,
+      Effect.withSpan("Prd.updateSync"),
       FiberHandle.run(updateSyncHandle, { onlyIfMissing: true }),
     )
 
     yield* fs.watch(lalphDir).pipe(
+      Stream.debounce(50),
       Stream.buffer({
         capacity: 1,
         strategy: "dropping",
@@ -213,10 +215,16 @@ export class Prd extends ServiceMap.Service<
       Effect.forkScoped,
     )
 
-    yield* sourceUpdates.pipe(Stream.runForEach(updateSync), Effect.forkScoped)
+    yield* AtomRegistry.toStreamResult(registry, currentIssuesAtom).pipe(
+      Stream.changes,
+      Stream.runForEach(updateSync),
+      Effect.forkScoped,
+    )
 
-    const findById = (issueId: string) =>
-      Effect.sync(() => current.find((i) => i.id === issueId) ?? null)
+    const findById = Effect.fnUntraced(function* (issueId: string) {
+      const current = yield* AtomRegistry.getResult(registry, currentIssuesAtom)
+      return current.find((i) => i.id === issueId) ?? null
+    })
 
     return {
       path: prdFile,
@@ -243,7 +251,21 @@ export class Prd extends ServiceMap.Service<
 }) {
   static layerNoWorktree = Layer.effect(this, this.make)
   static layer = this.layerNoWorktree.pipe(Layer.provideMerge(Worktree.layer))
+  static layerProvided = this.layer.pipe(
+    Layer.provide([
+      AtomRegistry.layer,
+      Reactivity.layer,
+      CurrentIssueSource.layer,
+    ]),
+  )
   static layerLocal = this.layerNoWorktree.pipe(
     Layer.provideMerge(Worktree.layerLocal),
+  )
+  static layerLocalProvided = this.layerLocal.pipe(
+    Layer.provide([
+      AtomRegistry.layer,
+      Reactivity.layer,
+      CurrentIssueSource.layer,
+    ]),
   )
 }

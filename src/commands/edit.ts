@@ -1,6 +1,5 @@
 import { Command } from "effect/unstable/cli"
-import { CurrentIssueSource } from "../IssueSources.ts"
-import { Effect, Layer } from "effect"
+import { Effect } from "effect"
 import { ChildProcess } from "effect/unstable/process"
 import { Prd } from "../Prd.ts"
 import { configEditor } from "../shared/config.ts"
@@ -21,9 +20,7 @@ export const commandEdit = Command.make("edit").pipe(
         }).pipe(ChildProcess.exitCode)
       },
       Effect.scoped,
-      Effect.provide(
-        Prd.layerLocal.pipe(Layer.provide(CurrentIssueSource.layer)),
-      ),
+      Effect.provide(Prd.layerLocalProvided),
     ),
   ),
 )
