@@ -83,8 +83,9 @@ The following instructions should be done without interaction or asking for perm
 This prevents other people or agents from working on the same task simultaneously.${
         options.gitFlow.requiresGithubPr
           ? `
-- Check if there is an existing Github PR for the chosen task. If there is, note the PR number for inclusion in the task.json file.
-   - Only include "open" PRs that are not yet merged.`
+- Check if there is an open Github PR for the chosen task. If there is, note the PR number for inclusion in the task.json file.
+   - Only include "open" PRs that are not yet merged.
+   - The pull request will contain the task id in the title or description.`
           : ""
       }
 - Once you have chosen a task, save its information in a "task.json" file alongside
