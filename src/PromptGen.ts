@@ -192,7 +192,9 @@ ${keyInformation(options)}`
       const prompt = (options: {
         readonly prompt: string
         readonly specsDirectory: string
-      }) => `${options.prompt}
+      }) => `The following instructions should be done without interaction or asking for permission.
+
+${options.prompt}
 
 ${keyInformation(options)}`
 
