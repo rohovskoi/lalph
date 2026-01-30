@@ -32,7 +32,6 @@ export class WorkerState extends Data.Class<{
 export type WorkerStatus = Data.TaggedEnum<{
   Booting: {}
   ChoosingTask: {}
-  Instructing: { issueId: string }
   Working: { issueId: string }
   Reviewing: { issueId: string }
   Merging: { issueId: string }

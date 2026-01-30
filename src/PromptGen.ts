@@ -137,24 +137,13 @@ challenges faced.
 
 ${prdNotes(options)}`
 
-      const promptInstructions = (options: {
+      const prompt = (options: {
         readonly task: PrdIssue
         readonly targetBranch: string | undefined
         readonly specsDirectory: string
         readonly githubPrNumber: number | undefined
         readonly gitFlow: GitFlow["Service"]
-      }) => `You are to read all of the following sections, and then produce clear,
-step by step instructions for another engineer to fullfil the task. Make sure to
-do some research to understand the task before writing the instructions.
-
-Save the instructions in a markdown file called ".lalph/instructions.md".
-
-**DO NOT** start working on the task yet, only output the instructions.
-Do everything you can to help the engineer succeed.
-
-"Help others achieve their dreams and you will achieve yours."
-
-# The task
+      }) => `# The task
 
 ID: ${options.task.id}
 Task: ${options.task.title}
@@ -189,15 +178,6 @@ ${options.task.description}
 
 ${keyInformation(options)}`
 
-      const prompt = (options: {
-        readonly prompt: string
-        readonly specsDirectory: string
-      }) => `The following instructions should be done without interaction or asking for permission.
-
-${options.prompt}
-
-${keyInformation(options)}`
-
       const promptReview = (options: {
         readonly prompt: string
         readonly specsDirectory: string
@@ -210,9 +190,7 @@ ${options.gitFlow.reviewInstructions}
 
 # Prevous instructions (only for context, do not repeat)
 
-${options.prompt}
-
-${keyInformation(options)}`
+${options.prompt}`
 
       const promptTimeout = (options: {
         readonly taskId: string
@@ -269,7 +247,6 @@ ${prdNotes(options)}`
 
       return {
         promptChoose,
-        promptInstructions,
         prompt,
         promptReview,
         promptTimeout,

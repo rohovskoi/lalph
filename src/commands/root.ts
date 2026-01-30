@@ -24,7 +24,6 @@ import {
   resetInProgress,
 } from "../IssueSources.ts"
 import { GithubCli } from "../Github/Cli.ts"
-import { agentInstructor } from "../Agents/instructor.ts"
 import { agentWorker } from "../Agents/worker.ts"
 import { agentChooser } from "../Agents/chooser.ts"
 import { RunnerStalled } from "../domain/Errors.ts"
@@ -143,42 +142,33 @@ const run = Effect.fnUntraced(
       )
     }
 
-    // 2. Generate instructions
-    // -----------------------
-
-    registry.update(currentWorker.state, (s) =>
-      s.transitionTo(WorkerStatus.Instructing({ issueId: taskId })),
-    )
-
-    const instructions = yield* agentInstructor({
-      stallTimeout: options.stallTimeout,
-      commandPrefix: options.commandPrefix,
-      specsDirectory: options.specsDirectory,
-      targetBranch: options.targetBranch,
-      task: chosenTask.prd,
-      cliAgent,
-      githubPrNumber: chosenTask.githubPrNumber ?? undefined,
-    }).pipe(Effect.withSpan("Main.agentInstructor"))
-
     yield* Effect.gen(function* () {
       //
-      // 3. Work on task
+      // 2. Work on task
       // -----------------------
 
       registry.update(currentWorker.state, (s) =>
         s.transitionTo(WorkerStatus.Working({ issueId: taskId })),
       )
 
-      const exitCode = yield* agentWorker({
+      const promptGen = yield* PromptGen
+      const instructions = promptGen.prompt({
         specsDirectory: options.specsDirectory,
+        targetBranch: Option.getOrUndefined(options.targetBranch),
+        task: chosenTask.prd,
+        githubPrNumber: chosenTask.githubPrNumber ?? undefined,
+        gitFlow,
+      })
+
+      const exitCode = yield* agentWorker({
         stallTimeout: options.stallTimeout,
         cliAgent,
         commandPrefix: options.commandPrefix,
-        instructions,
+        prompt: instructions,
       }).pipe(Effect.withSpan("Main.agentWorker"))
       yield* Effect.log(`Agent exited with code: ${exitCode}`)
 
-      // 4. Review task
+      // 3. Review task
       // -----------------------
 
       if (options.review) {
