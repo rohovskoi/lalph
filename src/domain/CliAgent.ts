@@ -28,7 +28,7 @@ const opencode = new CliAgent({
     ChildProcess.make({
       extendEnv: true,
       env: {
-        OPENCODE_PERMISSION: '{"*":"allow"}',
+        OPENCODE_PERMISSION: '{"*":"allow", "question":"deny"}',
       },
       stdout: "pipe",
       stderr: "pipe",
