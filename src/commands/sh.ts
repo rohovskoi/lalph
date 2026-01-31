@@ -19,6 +19,10 @@ export const commandSh = Command.make("sh").pipe(
           pathService.resolve(pathService.join(".lalph", "config")),
           pathService.join(worktree.directory, ".lalph", "config"),
         )
+        yield* fs.symlink(
+          pathService.resolve(pathService.join(".lalph", "projects")),
+          pathService.join(worktree.directory, ".lalph", "projects"),
+        )
 
         yield* ChildProcess.make(process.env.SHELL || "/bin/bash", [], {
           cwd: worktree.directory,
