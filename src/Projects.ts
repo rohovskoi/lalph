@@ -111,21 +111,8 @@ export class ProjectNotFound extends Data.TaggedError("ProjectNotFound")<{
 export const selectProject = Effect.gen(function* () {
   const projects = yield* getAllProjects
   if (projects.length === 0) {
-    const welcome = [
-      "  .--.",
-      " |^()^|  lalph",
-      "  '--'",
-      "",
-      "Welcome! Let's add your first project.",
-      "Projects let you configure how lalph runs tasks and integrations",
-      "(like issue sources, concurrency, and git flow) for a specific",
-      "workflow.",
-      "",
-    ].join("\n")
-    yield* Effect.log(welcome)
-    return yield* addProject
-  }
-  if (projects.length === 1) {
+    return yield* welcomeWizard
+  } else if (projects.length === 1) {
     const project = projects[0]!
     yield* Effect.log(`Using project: ${project.id}`)
     return project
@@ -138,6 +125,22 @@ export const selectProject = Effect.gen(function* () {
     })),
   })
   return selection!
+})
+
+export const welcomeWizard = Effect.gen(function* () {
+  const welcome = [
+    "  .--.",
+    " |^()^|  lalph",
+    "  '--'",
+    "",
+    "Welcome! Let's add your first project.",
+    "Projects let you configure how lalph runs tasks and integrations",
+    "(like issue sources, concurrency, and git flow) for a specific",
+    "workflow.",
+    "",
+  ].join("\n")
+  console.log(welcome)
+  return yield* addProject
 })
 
 export const addProject = Effect.gen(function* () {

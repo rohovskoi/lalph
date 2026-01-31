@@ -39,7 +39,7 @@ import {
 import { WorkerStatus } from "../domain/WorkerState.ts"
 import { GitFlow, GitFlowCommit, GitFlowPR } from "../GitFlow.ts"
 import { parseBranch } from "../shared/git.ts"
-import { getAllProjects } from "../Projects.ts"
+import { getAllProjects, welcomeWizard } from "../Projects.ts"
 import type { Project } from "../domain/Project.ts"
 
 // Main iteration run logic
@@ -384,10 +384,17 @@ export const commandRoot = Command.make("lalph", {
       }) {
         const commandPrefix = yield* getCommandPrefix
         yield* getOrSelectCliAgent
-        const projects = (yield* getAllProjects).filter((p) => p.enabled)
+
+        let allProjects = yield* getAllProjects
+        if (allProjects.length === 0) {
+          yield* welcomeWizard
+          allProjects = yield* getAllProjects
+        }
+
+        const projects = allProjects.filter((p) => p.enabled)
         if (projects.length === 0) {
           return yield* Effect.log(
-            "No enabled projects found. Run 'lalph projects add' to set one up.",
+            "No enabled projects found. Run 'lalph projects toggle' to enable one.",
           )
         }
         yield* Effect.forEach(
