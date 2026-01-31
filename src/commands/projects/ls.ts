@@ -18,6 +18,7 @@ export const commandProjectsLs = Command.make("ls").pipe(
 
       for (const project of projects) {
         console.log(`Project: ${project.id}`)
+        console.log(`  Enabled: ${project.enabled ? "Yes" : "No"}`)
         yield* source.info(project.id)
         console.log(`  Concurrency: ${project.concurrency}`)
         if (Option.isSome(project.targetBranch)) {
