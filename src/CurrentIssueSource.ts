@@ -1,4 +1,14 @@
-import { Effect, Layer, Option, pipe, Schema, ServiceMap } from "effect"
+import {
+  Cause,
+  Effect,
+  Layer,
+  Option,
+  pipe,
+  Schedule,
+  Schema,
+  ScopedRef,
+  ServiceMap,
+} from "effect"
 import { CurrentProjectId, Setting, Settings } from "./Settings.ts"
 import { LinearIssueSource } from "./Linear.ts"
 import { Prompt } from "effect/unstable/cli"
@@ -9,6 +19,7 @@ import { atomRuntime } from "./shared/runtime.ts"
 import { Atom, Reactivity } from "effect/unstable/reactivity"
 import type { PrdIssue } from "./domain/PrdIssue.ts"
 import type { ProjectId } from "./domain/Project.ts"
+import type { ChildProcessSpawner } from "effect/unstable/process/ChildProcessSpawner"
 
 const issueSources: ReadonlyArray<typeof CurrentIssueSource.Service> = [
   {
@@ -66,13 +77,71 @@ export class CurrentIssueSource extends ServiceMap.Service<
   static layer = Layer.effectServices(
     Effect.gen(function* () {
       const source = yield* getOrSelectIssueSource
-      const services = yield* Layer.build(source.layer).pipe(
+      const build = Layer.build(source.layer).pipe(
+        Effect.map(ServiceMap.get(IssueSource)),
         Effect.withSpan("CurrentIssueSource.build"),
       )
-      return ServiceMap.add(services, CurrentIssueSource, source)
+      const ref = yield* ScopedRef.fromAcquire(build)
+      const services = yield* Effect.services<
+        Settings | ChildProcessSpawner | Prompt.Environment
+      >()
+      const refresh = ScopedRef.set(ref, build).pipe(
+        Effect.provideServices(services),
+      )
+
+      const proxy = IssueSource.of({
+        issues: (projectId) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.issues(projectId)),
+            Effect.tapErrorTag("IssueSourceError", (e) =>
+              Effect.logWarning(
+                "Rebuilding issue source due to error",
+                Cause.fail(e),
+              ).pipe(Effect.andThen(Effect.ignore(refresh))),
+            ),
+            Effect.retry(refreshSchedule),
+          ),
+        createIssue: (projectId, options) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.createIssue(projectId, options)),
+          ),
+        updateIssue: (options) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.updateIssue(options)),
+          ),
+        cancelIssue: (projectId, issueId) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.cancelIssue(projectId, issueId)),
+          ),
+        reset: ScopedRef.get(ref).pipe(
+          Effect.flatMap((source) => source.reset),
+        ),
+        settings: (projectId) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.settings(projectId)),
+          ),
+        info: (projectId) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) => source.info(projectId)),
+          ),
+        ensureInProgress: (projectId, issueId) =>
+          ScopedRef.get(ref).pipe(
+            Effect.flatMap((source) =>
+              source.ensureInProgress(projectId, issueId),
+            ),
+          ),
+      })
+
+      return IssueSource.serviceMap(proxy).pipe(
+        ServiceMap.add(CurrentIssueSource, source),
+      )
     }),
   ).pipe(Layer.provide([Settings.layer, PlatformServices]))
 }
+
+const refreshSchedule = Schedule.exponential(100, 1.5).pipe(
+  Schedule.either(Schedule.spaced("30 seconds")),
+)
 
 // Atoms
 
@@ -85,9 +154,10 @@ export const currentIssuesAtom = Atom.family((projectId: ProjectId) =>
     issueSourceRuntime.atom(
       Effect.fnUntraced(function* (get) {
         const source = yield* IssueSource
-        const issues = yield* source
-          .issues(projectId)
-          .pipe(Effect.withSpan("currentIssuesAtom.refresh"))
+        const issues = yield* pipe(
+          source.issues(projectId),
+          Effect.withSpan("currentIssuesAtom.refresh"),
+        )
         const handle = setTimeout(() => {
           get.refreshSelf()
         }, 30_000)

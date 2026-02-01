@@ -85,4 +85,6 @@ export class IssueSourceError extends Schema.ErrorClass<IssueSourceError>(
 )({
   _tag: Schema.tag("IssueSourceError"),
   cause: Schema.Defect,
-}) {}
+}) {
+  readonly message = "An error occurred in the IssueSource"
+}

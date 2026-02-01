@@ -1,12 +1,10 @@
 import {
-  Cause,
   Config,
   Deferred,
   Duration,
   Effect,
   FiberSet,
   FileSystem,
-  Filter,
   Iterable,
   Option,
   Path,
@@ -22,7 +20,7 @@ import {
   checkForWork,
   CurrentIssueSource,
   resetInProgress,
-} from "../IssueSources.ts"
+} from "../CurrentIssueSource.ts"
 import { GithubCli } from "../Github/Cli.ts"
 import { agentWorker } from "../Agents/worker.ts"
 import { agentChooser } from "../Agents/chooser.ts"
@@ -280,16 +278,6 @@ const runProject = Effect.fnUntraced(
             withWorkerState(options.project.id),
           ),
         ),
-        Effect.catchFilter(
-          (e) =>
-            e._tag === "NoMoreWork" || e._tag === "QuitError"
-              ? Filter.fail(e)
-              : e,
-          (e) =>
-            Effect.logWarning(Cause.fail(e)).pipe(
-              Effect.andThen(Effect.sleep(Duration.seconds(10))),
-            ),
-        ),
         Effect.catchTags({
           NoMoreWork(_) {
             if (isFinite) {
@@ -311,6 +299,11 @@ const runProject = Effect.fnUntraced(
             return Effect.void
           },
         }),
+        Effect.catchCause((cause) =>
+          Effect.logWarning(cause).pipe(
+            Effect.andThen(Effect.sleep(Duration.seconds(10))),
+          ),
+        ),
         Effect.ensuring(semaphore.release(1)),
         Effect.ensuring(Deferred.completeWith(startedDeferred, Effect.void)),
         FiberSet.run(fibers),

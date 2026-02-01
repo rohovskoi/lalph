@@ -1,6 +1,6 @@
 import { Effect, Layer, ServiceMap } from "effect"
 import { PrdIssue } from "./domain/PrdIssue.ts"
-import { CurrentIssueSource } from "./IssueSources.ts"
+import { CurrentIssueSource } from "./CurrentIssueSource.ts"
 import type { GitFlow } from "./GitFlow.ts"
 
 export class PromptGen extends ServiceMap.Service<PromptGen>()(

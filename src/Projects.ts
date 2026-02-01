@@ -14,7 +14,7 @@ import { AsyncResult, Atom } from "effect/unstable/reactivity"
 import { CurrentProjectId, Setting, Settings } from "./Settings.ts"
 import { Prompt } from "effect/unstable/cli"
 import { IssueSource } from "./IssueSource.ts"
-import { CurrentIssueSource } from "./IssueSources.ts"
+import { CurrentIssueSource } from "./CurrentIssueSource.ts"
 
 export const layerProjectIdPrompt = Layer.effect(
   CurrentProjectId,

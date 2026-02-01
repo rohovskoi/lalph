@@ -1,5 +1,5 @@
 import { Command } from "effect/unstable/cli"
-import { CurrentIssueSource } from "../IssueSources.ts"
+import { CurrentIssueSource } from "../CurrentIssueSource.ts"
 import { Effect, FileSystem, flow, Layer, Schema } from "effect"
 import { IssueSource } from "../IssueSource.ts"
 import { ChildProcess } from "effect/unstable/process"

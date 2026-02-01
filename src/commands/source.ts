@@ -1,5 +1,5 @@
 import { Command } from "effect/unstable/cli"
-import { selectIssueSource } from "../IssueSources.ts"
+import { selectIssueSource } from "../CurrentIssueSource.ts"
 import { Settings } from "../Settings.ts"
 
 export const commandSource = Command.make("source").pipe(

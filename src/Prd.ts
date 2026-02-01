@@ -14,7 +14,7 @@ import { Worktree } from "./Worktree.ts"
 import { PrdIssue } from "./domain/PrdIssue.ts"
 import { IssueSource, IssueSourceError } from "./IssueSource.ts"
 import { AtomRegistry, Reactivity } from "effect/unstable/reactivity"
-import { CurrentIssueSource, currentIssuesAtom } from "./IssueSources.ts"
+import { CurrentIssueSource, currentIssuesAtom } from "./CurrentIssueSource.ts"
 import { CurrentProjectId } from "./Settings.ts"
 
 export class Prd extends ServiceMap.Service<

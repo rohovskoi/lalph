@@ -1,6 +1,6 @@
 import { Command } from "effect/unstable/cli"
 import { addOrUpdateProject } from "../../Projects.ts"
-import { CurrentIssueSource } from "../../IssueSources.ts"
+import { CurrentIssueSource } from "../../CurrentIssueSource.ts"
 import { Settings } from "../../Settings.ts"
 
 export const commandProjectsAdd = Command.make("add").pipe(

@@ -1,7 +1,7 @@
 import { Effect, Option } from "effect"
 import { Command } from "effect/unstable/cli"
 import { IssueSource } from "../../IssueSource.ts"
-import { CurrentIssueSource } from "../../IssueSources.ts"
+import { CurrentIssueSource } from "../../CurrentIssueSource.ts"
 import { getAllProjects } from "../../Projects.ts"
 import { Settings } from "../../Settings.ts"
 
