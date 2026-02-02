@@ -1,5 +1,11 @@
 # lalph
 
+## 0.2.16
+
+### Patch Changes
+
+- fix worktree-setup path
+
 ## 0.2.15
 
 ### Patch Changes

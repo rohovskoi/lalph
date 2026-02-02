@@ -124,10 +124,10 @@ const setupWorktree = Effect.fnUntraced(function* (options: {
     }
   }
 
-  const cwdSetupPath = pathService.resolve(".lalph", "worktree-setup.sh")
+  const cwdSetupPath = pathService.resolve("scripts", "worktree-setup.sh")
   const worktreeSetupPath = pathService.join(
     options.directory,
-    ".lalph",
+    "scripts",
     "worktree-setup.sh",
   )
 
