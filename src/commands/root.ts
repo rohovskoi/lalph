@@ -36,7 +36,6 @@ import {
 } from "../Workers.ts"
 import { WorkerStatus } from "../domain/WorkerState.ts"
 import { GitFlow, GitFlowCommit, GitFlowPR } from "../GitFlow.ts"
-import { parseBranch } from "../shared/git.ts"
 import { getAllProjects, welcomeWizard } from "../Projects.ts"
 import type { Project } from "../domain/Project.ts"
 
@@ -65,24 +64,6 @@ const run = Effect.fnUntraced(
     const gitFlow = yield* GitFlow
     const currentWorker = yield* CurrentWorkerState
     const registry = yield* AtomRegistry.AtomRegistry
-
-    if (Option.isSome(options.targetBranch)) {
-      const parsed = parseBranch(options.targetBranch.value)
-      const code = yield* worktree.exec`git checkout ${parsed.branchWithRemote}`
-      if (code !== 0) {
-        yield* worktree.exec`git checkout -b ${parsed.branch}`
-        yield* worktree.exec`git push -u ${parsed.remote} ${parsed.branch}`
-      }
-    }
-    if (gitFlow.branch) {
-      yield* worktree.exec`git branch -D ${gitFlow.branch}`
-      yield* worktree.exec`git checkout -b ${gitFlow.branch}`
-    }
-
-    const checkoutScript = pathService.resolve("scripts", "checkout-setup.sh")
-    if (yield* fs.exists(checkoutScript)) {
-      yield* worktree.exec`${checkoutScript}`
-    }
 
     // ensure cleanup of branch after run
     yield* Effect.addFinalizer(
@@ -284,7 +265,7 @@ const runProject = Effect.fnUntraced(
           ),
         ),
         Effect.catchTags({
-          NoMoreWork(_) {
+          NoMoreWork(_error) {
             if (isFinite) {
               // If we have a finite number of iterations, we exit when no more
               // work is found
@@ -299,7 +280,7 @@ const runProject = Effect.fnUntraced(
                 : Effect.void
             return Effect.andThen(log, Effect.sleep(Duration.seconds(30)))
           },
-          QuitError(_) {
+          QuitError(_error) {
             quit = true
             return Effect.void
           },

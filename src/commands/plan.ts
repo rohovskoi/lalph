@@ -1,14 +1,27 @@
-import { Data, Effect, FileSystem, Option, Path, pipe, Schema } from "effect"
+import {
+  Data,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Path,
+  pipe,
+  Schema,
+} from "effect"
 import { PromptGen } from "../PromptGen.ts"
 import { Prd } from "../Prd.ts"
-import { ChildProcess } from "effect/unstable/process"
 import { Worktree } from "../Worktree.ts"
+import type { ChildProcess } from "effect/unstable/process"
 import { getCommandPrefix, getOrSelectCliAgent } from "./agent.ts"
 import { Command, Flag } from "effect/unstable/cli"
 import { CurrentIssueSource } from "../CurrentIssueSource.ts"
 import { commandRoot } from "./root.ts"
 import { CurrentProjectId, Settings } from "../Settings.ts"
-import { addOrUpdateProject, selectProject } from "../Projects.ts"
+import {
+  addOrUpdateProject,
+  layerProjectIdPrompt,
+  selectProject,
+} from "../Projects.ts"
 import { agentPlanner } from "../Agents/planner.ts"
 import { agentTasker } from "../Agents/tasker.ts"
 import { commandPlanTasks } from "./plan/tasks.ts"
@@ -64,24 +77,6 @@ const plan = Effect.fnUntraced(
     const worktree = yield* Worktree
     const cliAgent = yield* getOrSelectCliAgent
 
-    const exec = (
-      template: TemplateStringsArray,
-      ...args: Array<string | number | boolean>
-    ) =>
-      ChildProcess.exitCode(
-        ChildProcess.make({
-          cwd: worktree.directory,
-          extendEnv: true,
-        })(template, ...args),
-      )
-
-    if (Option.isSome(options.targetBranch)) {
-      const targetWithRemote = options.targetBranch.value.includes("/")
-        ? options.targetBranch.value
-        : `origin/${options.targetBranch.value}`
-      yield* exec`git checkout ${targetWithRemote}`
-    }
-
     yield* agentPlanner({
       specsDirectory: options.specsDirectory,
       commandPrefix: options.commandPrefix,
@@ -119,7 +114,7 @@ const plan = Effect.fnUntraced(
   Effect.provide([
     PromptGen.layer,
     Prd.layerProvided,
-    Worktree.layer,
+    Worktree.layer.pipe(Layer.provide(layerProjectIdPrompt)),
     Settings.layer,
     CurrentIssueSource.layer,
   ]),
