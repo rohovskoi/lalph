@@ -43,11 +43,12 @@ export const agentChooser = Effect.fnUntraced(function* (options: {
     Effect.raceFirst(taskJsonCreated),
   )
 
-  const taskJson = yield* fs.readFileString(
-    pathService.join(worktree.directory, ".lalph", "task.json"),
-  )
-  return yield* Schema.decodeEffect(ChosenTask)(taskJson).pipe(
-    Effect.mapError(() => new ChosenTaskNotFound()),
+  return yield* pipe(
+    fs.readFileString(
+      pathService.join(worktree.directory, ".lalph", "task.json"),
+    ),
+    Effect.flatMap(Schema.decodeEffect(ChosenTask)),
+    Effect.mapError((_) => new ChosenTaskNotFound()),
     Effect.flatMap(
       Effect.fnUntraced(function* (task) {
         const prdTask = yield* prd.findById(task.id)
