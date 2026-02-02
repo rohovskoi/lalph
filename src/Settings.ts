@@ -20,8 +20,9 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
   make: Effect.gen(function* () {
     const kvs = yield* KeyValueStore.KeyValueStore
     const projectKvs = yield* ProjectsKvs
-    const store = KeyValueStore.prefix(kvs, "settings.")
     const reactivity = yield* Reactivity.Reactivity
+
+    const store = KeyValueStore.prefix(kvs, "settings.")
 
     const cache = yield* Cache.make({
       lookup(setting: Setting<string, Schema.Codec<any, any>>) {
@@ -63,7 +64,7 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
         onSome: (v) => Effect.orDie(s.set(setting.name, v)),
       })
       return reactivity.mutation(
-        [`settings.${setting.name}`],
+        [`settings:${setting.name}`],
         Effect.andThen(update, setCache),
       )
     }
@@ -109,7 +110,7 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
           onSome: (v) => Effect.orDie(s.set(setting.name, v)),
         })
         yield* reactivity.mutation(
-          [`settings.${projectId}.${setting.name}`],
+          [`settings.${projectId}:${setting.name}`],
           Effect.andThen(update, setCache),
         )
       },
@@ -162,7 +163,9 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
   > {
     const read = pipe(
       Settings.runtime.atom(Settings.get(setting)),
-      atomRuntime.withReactivity([`settings.${setting.name}`]),
+      atomRuntime.withReactivity({
+        settings: [setting.name],
+      }),
     )
     const set = Settings.runtime.fn<Option.Option<S["Type"]>>()((value) =>
       Settings.set(setting, value),
@@ -198,9 +201,9 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
           Effect.provideService(CurrentProjectId, options.projectId),
         ),
       ),
-      atomRuntime.withReactivity([
-        `settings.${options.projectId}.${options.setting.name}`,
-      ]),
+      atomRuntime.withReactivity({
+        [`settings.${options.projectId}`]: [options.setting.name],
+      }),
     )
     const set = Settings.runtime.fn<Option.Option<S["Type"]>>()((value) =>
       Settings.setProject(options.setting, value).pipe(
