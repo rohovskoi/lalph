@@ -233,9 +233,15 @@ permission.
 ${prdNotes(options)}`
 
       const planPrompt = (options: {
+        readonly plan: string
         readonly specsDirectory: string
-      }) => `1. Ask the user for the idea / request, then your job is to create a detailed
-   specification to fulfill the request and save it as a file.
+      }) => `<request><![CDATA[
+${options.plan}
+]]></request>
+
+## Instructions
+
+1. Your job is to create a detailed specification to fulfill the request and save it as a file.
    First do some research to understand the request, then interview the user
    to gather all the necessary requirements and details for the specification.
    - If the user asks you to update an existing specification, find the relevant

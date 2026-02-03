@@ -1,13 +1,4 @@
-import {
-  Data,
-  Effect,
-  FileSystem,
-  Layer,
-  Option,
-  Path,
-  pipe,
-  Schema,
-} from "effect"
+import { Data, Effect, FileSystem, Option, Path, pipe, Schema } from "effect"
 import { PromptGen } from "../PromptGen.ts"
 import { Prd } from "../Prd.ts"
 import { Worktree } from "../Worktree.ts"
@@ -17,14 +8,11 @@ import { Command, Flag } from "effect/unstable/cli"
 import { CurrentIssueSource } from "../CurrentIssueSource.ts"
 import { commandRoot } from "./root.ts"
 import { CurrentProjectId, Settings } from "../Settings.ts"
-import {
-  addOrUpdateProject,
-  layerProjectIdPrompt,
-  selectProject,
-} from "../Projects.ts"
+import { addOrUpdateProject, selectProject } from "../Projects.ts"
 import { agentPlanner } from "../Agents/planner.ts"
 import { agentTasker } from "../Agents/tasker.ts"
 import { commandPlanTasks } from "./plan/tasks.ts"
+import { Editor } from "../Editor.ts"
 
 const dangerous = Flag.boolean("dangerous").pipe(
   Flag.withAlias("d"),
@@ -46,25 +34,36 @@ export const commandPlan = Command.make("plan", {
   Command.withHandler(
     Effect.fnUntraced(
       function* ({ dangerous, withNewProject }) {
+        const editor = yield* Editor
+
+        const thePlan = yield* editor.editTemp({
+          suffix: ".md",
+        })
+        if (Option.isNone(thePlan)) return
+
         const project = withNewProject
           ? yield* addOrUpdateProject()
           : yield* selectProject
         const { specsDirectory } = yield* commandRoot
         const commandPrefix = yield* getCommandPrefix
+
         yield* plan({
+          plan: thePlan.value,
           specsDirectory,
           targetBranch: project.targetBranch,
           commandPrefix,
           dangerous,
         }).pipe(Effect.provideService(CurrentProjectId, project.id))
       },
-      Effect.provide([Settings.layer, CurrentIssueSource.layer]),
+      Effect.provide([Settings.layer, CurrentIssueSource.layer, Editor.layer]),
     ),
   ),
   Command.withSubcommands([commandPlanTasks]),
 )
+
 const plan = Effect.fnUntraced(
   function* (options: {
+    readonly plan: string
     readonly specsDirectory: string
     readonly targetBranch: Option.Option<string>
     readonly commandPrefix: (
@@ -75,22 +74,26 @@ const plan = Effect.fnUntraced(
     const fs = yield* FileSystem.FileSystem
     const pathService = yield* Path.Path
     const worktree = yield* Worktree
+
     const cliAgent = yield* getOrSelectCliAgent
 
     yield* agentPlanner({
+      plan: options.plan,
       specsDirectory: options.specsDirectory,
       commandPrefix: options.commandPrefix,
       dangerous: options.dangerous,
       cliAgent,
     })
 
-    yield* Effect.log("Converting specification into tasks")
     const planDetails = yield* pipe(
       fs.readFileString(
         pathService.join(worktree.directory, ".lalph", "plan.json"),
       ),
       Effect.flatMap(Schema.decodeEffect(PlanDetails)),
+      Effect.mapError(() => new SpecNotFound()),
     )
+
+    yield* Effect.log("Converting specification into tasks")
 
     yield* agentTasker({
       specificationPath: planDetails.specification,
@@ -114,7 +117,7 @@ const plan = Effect.fnUntraced(
   Effect.provide([
     PromptGen.layer,
     Prd.layerProvided,
-    Worktree.layer.pipe(Layer.provide(layerProjectIdPrompt)),
+    Worktree.layer,
     Settings.layer,
     CurrentIssueSource.layer,
   ]),

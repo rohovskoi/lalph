@@ -5,6 +5,7 @@ import { Worktree } from "../Worktree.ts"
 import type { CliAgent } from "../domain/CliAgent.ts"
 
 export const agentPlanner = Effect.fnUntraced(function* (options: {
+  readonly plan: string
   readonly specsDirectory: string
   readonly commandPrefix: (
     command: ChildProcess.Command,

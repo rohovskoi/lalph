@@ -1,27 +1,20 @@
 import { Command } from "effect/unstable/cli"
 import { Effect, Layer } from "effect"
-import { ChildProcess } from "effect/unstable/process"
 import { Prd } from "../Prd.ts"
-import { configEditor } from "../shared/config.ts"
 import { layerProjectIdPrompt } from "../Projects.ts"
+import { Editor } from "../Editor.ts"
 
 const handler = Command.withHandler(
   Effect.fnUntraced(
     function* () {
       const prd = yield* Prd
-      const editor = yield* configEditor
-
-      yield* ChildProcess.make(editor[0]!, [...editor.slice(1), prd.path], {
-        extendEnv: true,
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      }).pipe(ChildProcess.exitCode)
+      const editor = yield* Editor
+      yield* editor.edit(prd.path)
     },
-    Effect.scoped,
-    Effect.provide(
+    Effect.provide([
       Prd.layerLocalProvided.pipe(Layer.provideMerge(layerProjectIdPrompt)),
-    ),
+      Editor.layer,
+    ]),
   ),
 )
 

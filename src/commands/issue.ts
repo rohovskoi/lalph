@@ -1,13 +1,12 @@
 import { Command } from "effect/unstable/cli"
 import { CurrentIssueSource } from "../CurrentIssueSource.ts"
-import { Effect, FileSystem, flow, Layer, Schema } from "effect"
+import { Effect, flow, Layer, Option, Schema } from "effect"
 import { IssueSource } from "../IssueSource.ts"
-import { ChildProcess } from "effect/unstable/process"
 import { PrdIssue } from "../domain/PrdIssue.ts"
 import * as Yaml from "yaml"
-import { configEditor } from "../shared/config.ts"
 import { CurrentProjectId } from "../Settings.ts"
 import { layerProjectIdPrompt } from "../Projects.ts"
+import { Editor } from "../Editor.ts"
 
 const issueTemplate = `---
 title: Issue Title
@@ -33,31 +32,18 @@ const handler = flow(
   Command.withHandler(
     Effect.fnUntraced(function* () {
       const source = yield* IssueSource
-      const fs = yield* FileSystem.FileSystem
       const projectId = yield* CurrentProjectId
-      const tempFile = yield* fs.makeTempFileScoped({
+      const editor = yield* Editor
+
+      const content = yield* editor.editTemp({
         suffix: ".md",
+        initialContent: issueTemplate,
       })
-      const editor = yield* configEditor
-      yield* fs.writeFileString(tempFile, issueTemplate)
-
-      const exitCode = yield* ChildProcess.make(
-        editor[0]!,
-        [...editor.slice(1), tempFile],
-        {
-          stdin: "inherit",
-          stdout: "inherit",
-          stderr: "inherit",
-        },
-      ).pipe(ChildProcess.exitCode)
-      if (exitCode !== 0) return
-
-      const content = yield* fs.readFileString(tempFile)
-      if (content.trim() === issueTemplate.trim()) {
+      if (Option.isNone(content)) {
         return
       }
 
-      const lines = content.split("\n")
+      const lines = content.value.split("\n")
       const yamlLines: string[] = []
       let descriptionStartIndex = 0
       for (let i = 0; i < lines.length; i++) {
@@ -93,7 +79,13 @@ const handler = flow(
       console.log(`URL: ${created.url}`)
     }, Effect.scoped),
   ),
-  Command.provide(Layer.merge(layerProjectIdPrompt, CurrentIssueSource.layer)),
+  Command.provide(
+    Layer.mergeAll(
+      layerProjectIdPrompt,
+      CurrentIssueSource.layer,
+      Editor.layer,
+    ),
+  ),
 )
 
 export const commandIssue = Command.make("issue").pipe(
