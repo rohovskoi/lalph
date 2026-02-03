@@ -1,6 +1,6 @@
 import { Command } from "effect/unstable/cli"
 import { CurrentIssueSource } from "../CurrentIssueSource.ts"
-import { Effect, flow, Layer, Option, Schema } from "effect"
+import { Effect, flow, Option, Schema } from "effect"
 import { IssueSource } from "../IssueSource.ts"
 import { PrdIssue } from "../domain/PrdIssue.ts"
 import * as Yaml from "yaml"
@@ -31,8 +31,6 @@ const FrontMatterSchema = Schema.toCodecJson(
 const handler = flow(
   Command.withHandler(
     Effect.fnUntraced(function* () {
-      const source = yield* IssueSource
-      const projectId = yield* CurrentProjectId
       const editor = yield* Editor
 
       const content = yield* editor.editTemp({
@@ -66,26 +64,24 @@ const handler = flow(
       )
       const description = lines.slice(descriptionStartIndex).join("\n").trim()
 
-      const created = yield* source.createIssue(
-        projectId,
-        new PrdIssue({
-          id: null,
-          ...frontMatter,
-          description,
-          state: "todo",
-        }),
-      )
-      console.log(`Created issue with ID: ${created.id}`)
-      console.log(`URL: ${created.url}`)
-    }, Effect.scoped),
+      yield* Effect.gen(function* () {
+        const source = yield* IssueSource
+        const projectId = yield* CurrentProjectId
+        const created = yield* source.createIssue(
+          projectId,
+          new PrdIssue({
+            id: null,
+            ...frontMatter,
+            description,
+            state: "todo",
+          }),
+        )
+        console.log(`Created issue with ID: ${created.id}`)
+        console.log(`URL: ${created.url}`)
+      }).pipe(Effect.provide([layerProjectIdPrompt, CurrentIssueSource.layer]))
+    }),
   ),
-  Command.provide(
-    Layer.mergeAll(
-      layerProjectIdPrompt,
-      CurrentIssueSource.layer,
-      Editor.layer,
-    ),
-  ),
+  Command.provide(Editor.layer),
 )
 
 export const commandIssue = Command.make("issue").pipe(
