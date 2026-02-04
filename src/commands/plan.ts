@@ -31,15 +31,17 @@ export const commandPlan = Command.make("plan", {
 }).pipe(
   Command.withDescription("Iterate on an issue plan and create PRD tasks"),
   Command.withHandler(
-    Effect.fnUntraced(
-      function* ({ dangerous, withNewProject }) {
-        const editor = yield* Editor
+    Effect.fnUntraced(function* ({ dangerous, withNewProject }) {
+      const editor = yield* Editor
 
-        const thePlan = yield* editor.editTemp({
-          suffix: ".md",
-        })
-        if (Option.isNone(thePlan)) return
+      const thePlan = yield* editor.editTemp({
+        suffix: ".md",
+      })
+      if (Option.isNone(thePlan)) return
 
+      // We nest this effect, so we can launch the editor first as fast as
+      // possible
+      yield* Effect.gen(function* () {
         const project = withNewProject
           ? yield* addOrUpdateProject()
           : yield* selectProject
@@ -51,9 +53,8 @@ export const commandPlan = Command.make("plan", {
           targetBranch: project.targetBranch,
           dangerous,
         }).pipe(Effect.provideService(CurrentProjectId, project.id))
-      },
-      Effect.provide([Settings.layer, CurrentIssueSource.layer, Editor.layer]),
-    ),
+      }).pipe(Effect.provide([Settings.layer, CurrentIssueSource.layer]))
+    }, Effect.provide(Editor.layer)),
   ),
   Command.withSubcommands([commandPlanTasks]),
 )

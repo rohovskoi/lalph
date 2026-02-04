@@ -15,7 +15,7 @@ import { PrdIssue } from "./domain/PrdIssue.ts"
 import { IssueSource, IssueSourceError } from "./IssueSource.ts"
 import { AtomRegistry, Reactivity } from "effect/unstable/reactivity"
 import { CurrentIssueSource, currentIssuesAtom } from "./CurrentIssueSource.ts"
-import { CurrentProjectId } from "./Settings.ts"
+import { CurrentProjectId, Settings } from "./Settings.ts"
 
 export class Prd extends ServiceMap.Service<
   Prd,
@@ -282,6 +282,7 @@ export class Prd extends ServiceMap.Service<
       AtomRegistry.layer,
       Reactivity.layer,
       CurrentIssueSource.layer,
+      Settings.layer,
     ]),
   )
   static layerLocal = this.layerNoWorktree.pipe(
