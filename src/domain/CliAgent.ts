@@ -20,7 +20,6 @@ export class CliAgent<const Id extends string> extends Data.Class<{
   commandPlan: (options: {
     readonly prompt: string
     readonly prdFilePath: string
-    readonly extraArgs: ReadonlyArray<string>
     readonly dangerous: boolean
   }) => ChildProcess.Command
 }> {}
@@ -46,11 +45,10 @@ const opencode = new CliAgent({
         stdin: "inherit",
       },
     ),
-  commandPlan: ({ prompt, prdFilePath, extraArgs, dangerous }) =>
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
     ChildProcess.make(
       "opencode",
       [
-        ...extraArgs,
         "--prompt",
         `@${prdFilePath}
 
@@ -97,12 +95,11 @@ ${prompt}`,
       },
     ),
   outputTransformer: claudeOutputTransformer,
-  commandPlan: ({ prompt, prdFilePath, extraArgs, dangerous }) =>
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
     ChildProcess.make(
       "claude",
       [
         ...(dangerous ? ["--dangerously-skip-permissions"] : []),
-        ...extraArgs,
         `@${prdFilePath}
 
 ${prompt}`,
@@ -135,11 +132,10 @@ ${prompt}`,
         stdin: "inherit",
       },
     ),
-  commandPlan: ({ prompt, prdFilePath, extraArgs, dangerous }) =>
+  commandPlan: ({ prompt, prdFilePath, dangerous }) =>
     ChildProcess.make(
       "codex",
       [
-        ...extraArgs,
         ...(dangerous ? ["--dangerously-bypass-approvals-and-sandbox"] : []),
         `@${prdFilePath}
 

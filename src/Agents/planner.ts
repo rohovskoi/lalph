@@ -19,7 +19,6 @@ export const agentPlanner = Effect.fnUntraced(function* (options: {
       prompt: promptGen.planPrompt(options),
       prdFilePath: pathService.join(".lalph", "prd.yml"),
       dangerous: options.dangerous,
-      extraArgs: options.preset.extraArgs,
     }),
     ChildProcess.setCwd(worktree.directory),
     options.preset.withCommandPrefix,
