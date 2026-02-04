@@ -489,8 +489,8 @@ export const LinearIssueSource = Layer.effect(
         },
         Effect.mapError((cause) => new IssueSourceError({ cause })),
       ),
-      issueCliAgentPreset: (_issue) =>
-        Effect.sync(() => Option.fromUndefinedOr(presetMap.get(_issue.id!))),
+      issueCliAgentPreset: (issue) =>
+        Effect.sync(() => Option.fromUndefinedOr(presetMap.get(issue.id!))),
       updateCliAgentPreset: Effect.fnUntraced(function* (preset) {
         const labels = yield* Stream.runCollect(linear.labels).pipe(
           Effect.mapError((cause) => new IssueSourceError({ cause })),

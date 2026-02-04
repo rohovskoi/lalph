@@ -34,7 +34,7 @@ const opencode = new CliAgent({
   command: ({ prompt, prdFilePath, extraArgs }) =>
     ChildProcess.make(
       "opencode",
-      ["run", ...extraArgs, "-f", prdFilePath, prompt],
+      ["run", prompt, ...extraArgs, "-f", prdFilePath],
       {
         extendEnv: true,
         env: {

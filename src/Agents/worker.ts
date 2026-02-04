@@ -15,7 +15,7 @@ export const agentWorker = Effect.fnUntraced(function* (options: {
     options.preset.cliAgent.command({
       prompt: options.prompt,
       prdFilePath: pathService.join(".lalph", "prd.yml"),
-      extraArgs: [],
+      extraArgs: options.preset.extraArgs,
     }),
     ChildProcess.setCwd(worktree.directory),
     options.preset.withCommandPrefix,
