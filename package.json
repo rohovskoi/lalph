@@ -10,7 +10,7 @@
   },
   "scripts": {
     "prepare": "husky && effect-language-service patch",
-    "check": "tsc --noEmit && oxlint -c .oxlintrc.json",
+    "check": "concurrently \"tsc --noEmit\" \"oxlint -c .oxlintrc.json\" \"pnpm build\"",
     "build": "tsdown",
     "prepublishOnly": "pnpm build"
   },
@@ -34,6 +34,7 @@
     "@linear/sdk": "^72.0.0",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "@octokit/types": "^16.0.0",
+    "concurrently": "^9.2.1",
     "effect": "https://pkg.pr.new/Effect-TS/effect-smol/effect@39ecde9",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
