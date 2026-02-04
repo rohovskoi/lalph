@@ -188,7 +188,7 @@ export const addOrUpdateProject = Effect.fnUntraced(function* (
         title: "Commit",
         description: "Tasks are committed directly to the target branch",
         value: "commit",
-        selected: existing ? existing.gitFlow === "pr" : false,
+        selected: existing ? existing.gitFlow === "commit" : false,
       },
     ] as const,
   })
