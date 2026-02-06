@@ -10,13 +10,9 @@ import {
   pipe,
   Array,
   Cache,
+  Duration,
 } from "effect"
-import {
-  Connection,
-  IssueRelationType,
-  LinearClient,
-  Project as LinearProject,
-} from "@linear/sdk"
+import { Connection, IssueRelationType, LinearClient } from "@linear/sdk"
 import { TokenManager } from "./Linear/TokenManager.ts"
 import { Prompt } from "effect/unstable/cli"
 import { CurrentProjectId, ProjectSetting, Settings } from "./Settings.ts"
@@ -31,6 +27,8 @@ import { Reactivity } from "effect/unstable/reactivity"
 import type { ProjectId } from "./domain/Project.ts"
 import { getPresetsWithMetadata } from "./Presets.ts"
 import type { CliAgentPreset } from "./domain/CliAgentPreset.ts"
+import { Persistable, PersistedCache } from "effect/unstable/persistence"
+import { layerPersistence } from "./Persistence.ts"
 
 class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
   make: Effect.gen(function* () {
@@ -91,20 +89,49 @@ class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
         }),
       )
 
-    const projects = stream((client) =>
-      client.projects({
-        filter: {
-          status: {
-            type: { nin: ["canceled", "completed"] },
+    const cache = yield* PersistedCache.make<LinearState, never>({
+      storeId: "linear",
+      lookup(_) {
+        const projects = Stream.runCollect(
+          stream((client) =>
+            client.projects({
+              filter: {
+                status: {
+                  type: { nin: ["canceled", "completed"] },
+                },
+              },
+            }),
+          ).pipe(
+            Stream.mapEffect(
+              Effect.fnUntraced(function* (project) {
+                const teams = yield* use(() => project.teams({ first: 100 }))
+                return {
+                  ...project,
+                  teams: teams.nodes,
+                }
+              }),
+            ),
+          ),
+        )
+        const labels = Stream.runCollect(
+          stream((client) => client.issueLabels()),
+        )
+        const states = Stream.runCollect(
+          stream((client) => client.workflowStates()),
+        )
+        const viewer = use((client) => client.viewer)
+        return Effect.all(
+          {
+            projects,
+            labels,
+            states,
+            viewer,
           },
-        },
-      }),
-    )
-    const labels = stream((client) => client.issueLabels())
-    const states = yield* Stream.runCollect(
-      stream((client) => client.workflowStates()),
-    )
-    const viewer = yield* use((client) => client.viewer)
+          { concurrency: "unbounded" },
+        ).pipe(Effect.orDie)
+      },
+      timeToLive: (_) => Duration.infinity,
+    })
     const issues = (options: {
       readonly labelId: Option.Option<string>
       readonly projectId: string
@@ -141,17 +168,15 @@ class Linear extends ServiceMap.Service<Linear>()("lalph/Linear", {
     return {
       use,
       stream,
-      projects,
-      labels,
-      states,
-      viewer,
+      getState: cache.get(new LinearState()),
+      invalidate: cache.invalidate(new LinearState()),
       issues,
       issueById,
     } as const
   }),
 }) {
   static layer = Layer.effect(this, this.make).pipe(
-    Layer.provide(TokenManager.layer),
+    Layer.provide([TokenManager.layer, layerPersistence]),
   )
 }
 
@@ -159,6 +184,7 @@ export const LinearIssueSource = Layer.effect(
   IssueSource,
   Effect.gen(function* () {
     const linear = yield* Linear
+    let state = yield* linear.getState
 
     const projectSettings = yield* Cache.make({
       lookup: Effect.fnUntraced(
@@ -183,30 +209,30 @@ export const LinearIssueSource = Layer.effect(
     const presetMap = new Map<string, CliAgentPreset>()
 
     const backlogState =
-      linear.states.find(
+      state.states.find(
         (s) => s.type === "backlog" && s.name.toLowerCase().includes("backlog"),
-      ) || linear.states.find((s) => s.type === "backlog")!
+      ) || state.states.find((s) => s.type === "backlog")!
     const todoState =
-      linear.states.find(
+      state.states.find(
         (s) =>
           s.type === "unstarted" &&
           (s.name.toLowerCase().includes("todo") ||
             s.name.toLowerCase().includes("unstarted")),
-      ) || linear.states.find((s) => s.type === "unstarted")!
+      ) || state.states.find((s) => s.type === "unstarted")!
     const inProgressState =
-      linear.states.find(
+      state.states.find(
         (s) =>
           s.type === "started" &&
           (s.name.toLowerCase().includes("progress") ||
             s.name.toLowerCase().includes("started")),
-      ) || linear.states.find((s) => s.type === "started")!
+      ) || state.states.find((s) => s.type === "started")!
     const inReviewState =
-      linear.states.find(
+      state.states.find(
         (s) => s.type === "started" && s.name.toLowerCase().includes("review"),
-      ) || linear.states.find((s) => s.type === "completed")!
-    const doneState = linear.states.find((s) => s.type === "completed")!
+      ) || state.states.find((s) => s.type === "completed")!
+    const doneState = state.states.find((s) => s.type === "completed")!
 
-    const canceledState = linear.states.find(
+    const canceledState = state.states.find(
       (state) => state.type === "canceled",
     )!
 
@@ -247,14 +273,14 @@ export const LinearIssueSource = Layer.effect(
 
     const issues = ({
       labelId,
-      project,
+      projectId,
       autoMergeLabelId,
     }: {
       readonly labelId: Option.Option<string>
-      readonly project: LinearProject
+      readonly projectId: string
       readonly autoMergeLabelId: Option.Option<string>
     }) =>
-      linear.issues({ labelId, projectId: project.id }).pipe(
+      linear.issues({ labelId, projectId }).pipe(
         Effect.mapError((cause) => new IssueSourceError({ cause })),
         Effect.map((issues) => {
           const threeDaysAgo = DateTime.nowUnsafe().pipe(
@@ -297,7 +323,11 @@ export const LinearIssueSource = Layer.effect(
     return yield* IssueSource.make({
       issues: Effect.fnUntraced(function* (projectId) {
         const settings = yield* Cache.get(projectSettings, projectId)
-        return yield* issues(settings)
+        return yield* issues({
+          projectId,
+          labelId: settings.labelId,
+          autoMergeLabelId: settings.autoMergeLabelId,
+        })
       }),
       createIssue: Effect.fnUntraced(
         function* (projectId, issue) {
@@ -307,7 +337,7 @@ export const LinearIssueSource = Layer.effect(
             c.createIssue({
               teamId,
               projectId: project.id,
-              assigneeId: linear.viewer.id,
+              assigneeId: state.viewer.id,
               labelIds: [
                 ...Option.toArray(labelId),
                 ...(issue.autoMerge ? Option.toArray(autoMergeLabelId) : []),
@@ -462,23 +492,19 @@ export const LinearIssueSource = Layer.effect(
             yield* Cache.get(projectSettings, lalphProjectId)
           const label = labelId
           const autoMergeLabel = autoMergeLabelId
-          const teams = yield* Stream.runCollect(
-            linear.stream(() => project.teams()),
-          )
-          const labels = yield* Stream.runCollect(linear.labels)
           const teamName =
-            teams.find((team) => team.id === teamId)?.name ?? teamId
+            project.teams.find((team) => team.id === teamId)?.name ?? teamId
           const resolveLabel = (value: Option.Option<string>) =>
             Option.match(value, {
               onNone: () => "None",
               onSome: (id) =>
-                labels.find((label) => label.id === id)?.name ?? id,
+                state.labels.find((label) => label.id === id)?.name ?? id,
             })
           const resolveAutoMergeLabel = (value: Option.Option<string>) =>
             Option.match(value, {
               onNone: () => "Disabled",
               onSome: (id) =>
-                labels.find((label) => label.id === id)?.name ?? id,
+                state.labels.find((label) => label.id === id)?.name ?? id,
             })
           console.log(`  Linear project: ${project.name}`)
           console.log(`  Team: ${teamName}`)
@@ -492,12 +518,13 @@ export const LinearIssueSource = Layer.effect(
       issueCliAgentPreset: (issue) =>
         Effect.sync(() => Option.fromUndefinedOr(presetMap.get(issue.id!))),
       updateCliAgentPreset: Effect.fnUntraced(function* (preset) {
-        const labels = yield* Stream.runCollect(linear.labels).pipe(
+        state = yield* linear.invalidate.pipe(
+          Effect.andThen(linear.getState),
           Effect.mapError((cause) => new IssueSourceError({ cause })),
         )
         const labelId = yield* Prompt.autoComplete({
           message: "Select a label for this preset",
-          choices: labels.map((label) => ({
+          choices: state.labels.map((label) => ({
             title: label.name,
             value: label.id,
           })),
@@ -513,9 +540,9 @@ export const LinearIssueSource = Layer.effect(
             PresetMetadata,
           )
           if (Option.isNone(metadata)) return
-          const label = yield* linear.labels.pipe(
-            Stream.filter((label) => label.id === metadata.value.labelId),
-            Stream.runHead,
+          const label = Array.findFirst(
+            state.labels,
+            (l) => l.id === metadata.value.labelId,
           )
           if (Option.isNone(label)) return
           console.log(`  Label: ${label.value.name}`)
@@ -542,8 +569,9 @@ const selectedProjectId = new ProjectSetting(
 
 const selectProject = Effect.gen(function* () {
   const linear = yield* Linear
+  yield* linear.invalidate
+  const state = yield* linear.getState
 
-  const projects = yield* Stream.runCollect(linear.projects)
   const choices: ReadonlyArray<{
     readonly title: string
     readonly value: ProjectSelection
@@ -552,7 +580,7 @@ const selectProject = Effect.gen(function* () {
       title: "Create new",
       value: { _tag: "create" },
     },
-    ...projects.map((project) => ({
+    ...state.projects.map((project) => ({
       title: project.name,
       value: {
         _tag: "existing" as const,
@@ -575,9 +603,10 @@ const selectProject = Effect.gen(function* () {
 })
 const getOrSelectProject = Effect.gen(function* () {
   const linear = yield* Linear
+  const state = yield* linear.getState
   return yield* Settings.getProject(selectedProjectId).pipe(
     Effect.flatMap((o) => o.asEffect()),
-    Effect.flatMap((projectId) => linear.use((c) => c.project(projectId))),
+    Effect.map((projectId) => state.projects.find((p) => p.id === projectId)!),
     Effect.catch(() => selectProject),
   )
 })
@@ -588,12 +617,12 @@ type ProjectSelection =
     }
   | {
       readonly _tag: "existing"
-      readonly project: LinearProject
+      readonly project: typeof ProjectSchema.Type
     }
 
 const createLinearProject = Effect.gen(function* () {
   const linear = yield* Linear
-  const projects = yield* Stream.runCollect(linear.projects)
+  const state = yield* linear.getState
   const projectName = yield* Prompt.text({
     message: "Linear project name",
     validate(input) {
@@ -602,7 +631,7 @@ const createLinearProject = Effect.gen(function* () {
         return Effect.fail("Project name cannot be empty")
       }
       if (
-        projects.some(
+        state.projects.some(
           (project) => project.name.toLowerCase() === name.toLowerCase(),
         )
       ) {
@@ -627,7 +656,11 @@ const createLinearProject = Effect.gen(function* () {
       teamIds: [teamId],
     }),
   )
-  return yield* linear.use(() => created.project!)
+  return ProjectSchema.makeUnsafe({
+    id: created.projectId!,
+    name: projectName,
+    teams: teams.filter((team) => team.id === teamId),
+  })
 })
 
 // Team selection
@@ -636,12 +669,12 @@ const selectedTeamId = new ProjectSetting(
   "linear.selectedTeamId",
   Schema.String,
 )
-const teamSelect = Effect.fnUntraced(function* (project: LinearProject) {
-  const linear = yield* Linear
-  const teams = yield* Stream.runCollect(linear.stream(() => project.teams()))
+const teamSelect = Effect.fnUntraced(function* (
+  project: typeof ProjectSchema.Type,
+) {
   const teamId = yield* Prompt.autoComplete({
     message: "Select a team for new issues",
-    choices: teams.map((team) => ({
+    choices: project.teams.map((team) => ({
       title: team.name,
       value: team.id,
     })),
@@ -649,7 +682,9 @@ const teamSelect = Effect.fnUntraced(function* (project: LinearProject) {
   yield* Settings.setProject(selectedTeamId, Option.some(teamId))
   return teamId
 })
-const getOrSelectTeamId = Effect.fnUntraced(function* (project: LinearProject) {
+const getOrSelectTeamId = Effect.fnUntraced(function* (
+  project: typeof ProjectSchema.Type,
+) {
   const teamIdOption = yield* Settings.getProject(selectedTeamId)
   if (Option.isSome(teamIdOption)) {
     return teamIdOption.value
@@ -665,7 +700,8 @@ const selectedLabelId = new ProjectSetting(
 )
 const labelIdSelect = Effect.gen(function* () {
   const linear = yield* Linear
-  const labels = yield* Stream.runCollect(linear.labels)
+  yield* linear.invalidate
+  const state = yield* linear.getState
   const labelId = yield* Prompt.autoComplete({
     message: "Select a label to filter issues by",
     choices: [
@@ -674,7 +710,7 @@ const labelIdSelect = Effect.gen(function* () {
         value: Option.none<string>(),
       },
     ].concat(
-      labels.map((label) => ({
+      state.labels.map((label) => ({
         title: label.name,
         value: Option.some(label.id),
       })),
@@ -699,7 +735,7 @@ const selectedAutoMergeLabelId = new ProjectSetting(
 )
 const autoMergeLabelIdSelect = Effect.gen(function* () {
   const linear = yield* Linear
-  const labels = yield* Stream.runCollect(linear.labels)
+  const state = yield* linear.getState
   const labelId = yield* Prompt.autoComplete({
     message: "Select a label to mark issues for auto merge",
     choices: [
@@ -708,7 +744,7 @@ const autoMergeLabelIdSelect = Effect.gen(function* () {
         value: Option.none<string>(),
       },
     ].concat(
-      labels.map((label) => ({
+      state.labels.map((label) => ({
         title: label.name,
         value: Option.some(label.id),
       })),
@@ -802,3 +838,41 @@ const issueByIdQuery = `query issueById($id: String!) {
   }
 }
 `
+
+// Persistables
+
+const ProjectSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  teams: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+    }),
+  ),
+})
+
+class LinearState extends Persistable.Class<{
+  payload: {}
+}>()("lalph/LinearState", {
+  primaryKey: (_) => "state",
+  success: Schema.Struct({
+    labels: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        name: Schema.String,
+      }),
+    ),
+    projects: Schema.Array(ProjectSchema),
+    states: Schema.Array(
+      Schema.Struct({
+        id: Schema.String,
+        name: Schema.String,
+        type: Schema.String,
+      }),
+    ),
+    viewer: Schema.Struct({
+      id: Schema.String,
+    }),
+  }),
+}) {}

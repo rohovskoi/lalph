@@ -1,20 +1,10 @@
 // oxlint-disable typescript/no-explicit-any
-import {
-  Cache,
-  Effect,
-  Layer,
-  Option,
-  pipe,
-  PlatformError,
-  Schema,
-  ServiceMap,
-} from "effect"
+import { Cache, Effect, Layer, Option, Schema, ServiceMap } from "effect"
 import { KeyValueStore } from "effect/unstable/persistence"
 import { layerKvs, ProjectsKvs } from "./Kvs.ts"
 import { allCliAgents } from "./domain/CliAgent.ts"
 import { ProjectId } from "./domain/Project.ts"
-import { atomRuntime } from "./shared/runtime.ts"
-import { AsyncResult, Atom, Reactivity } from "effect/unstable/reactivity"
+import { Reactivity } from "effect/unstable/reactivity"
 
 export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
   make: Effect.gen(function* () {
@@ -123,7 +113,6 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
   static layer = Layer.effect(this, this.make).pipe(
     Layer.provide([layerKvs, ProjectsKvs.layer, Reactivity.layer]),
   )
-  static runtime = atomRuntime(this.layer)
 
   static get<Name extends string, S extends Schema.Codec<any, any>>(
     setting: Setting<Name, S>,
@@ -148,78 +137,6 @@ export class Settings extends ServiceMap.Service<Settings>()("lalph/Settings", {
   ) {
     return Settings.use((_) => _.setProject(setting, value))
   }
-
-  static atom = Atom.family(function <
-    Name extends string,
-    S extends Schema.Codec<any, any>,
-  >(
-    setting: Setting<Name, S>,
-  ): Atom.Writable<
-    AsyncResult.AsyncResult<
-      Option.Option<S["Type"]>,
-      PlatformError.PlatformError
-    >,
-    Option.Option<S["Type"]>
-  > {
-    const read = pipe(
-      Settings.runtime.atom(Settings.get(setting)),
-      atomRuntime.withReactivity({
-        settings: [setting.name],
-      }),
-    )
-    const set = Settings.runtime.fn<Option.Option<S["Type"]>>()((value) =>
-      Settings.set(setting, value),
-    )
-    return Atom.writable(
-      (get) => {
-        get.mount(set)
-        return get(read)
-      },
-      (ctx, value: Option.Option<S["Type"]>) => {
-        ctx.set(set, value)
-      },
-      (r) => r(read),
-    )
-  })
-
-  static projectAtom = Atom.family(function <
-    Name extends string,
-    S extends Schema.Codec<any, any>,
-  >(options: {
-    readonly projectId: ProjectId
-    readonly setting: ProjectSetting<Name, S>
-  }): Atom.Writable<
-    AsyncResult.AsyncResult<
-      Option.Option<S["Type"]>,
-      PlatformError.PlatformError
-    >,
-    Option.Option<S["Type"]>
-  > {
-    const read = pipe(
-      Settings.runtime.atom(
-        Settings.getProject(options.setting).pipe(
-          Effect.provideService(CurrentProjectId, options.projectId),
-        ),
-      ),
-      atomRuntime.withReactivity({
-        [`settings.${options.projectId}`]: [options.setting.name],
-      }),
-    )
-    const set = Settings.runtime.fn<Option.Option<S["Type"]>>()((value) =>
-      Settings.setProject(options.setting, value).pipe(
-        Effect.provideService(CurrentProjectId, options.projectId),
-      ),
-    )
-    return Atom.writable(
-      (get) => {
-        get.mount(set)
-        return get(read)
-      },
-      (ctx, value: Option.Option<S["Type"]>) => {
-        ctx.set(set, value)
-      },
-    )
-  })
 }
 
 export class CurrentProjectId extends ServiceMap.Service<
