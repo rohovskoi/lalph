@@ -539,52 +539,7 @@ const selectedProjectId = new ProjectSetting(
   "linear.selectedProjectId",
   Schema.String,
 )
-type ProjectSelection =
-  | {
-      readonly _tag: "create"
-    }
-  | {
-      readonly _tag: "existing"
-      readonly project: LinearProject
-    }
-const createLinearProject = Effect.gen(function* () {
-  const linear = yield* Linear
-  const projects = yield* Stream.runCollect(linear.projects)
-  const projectName = yield* Prompt.text({
-    message: "Project name",
-    validate(input) {
-      const name = input.trim()
-      if (name.length === 0) {
-        return Effect.fail("Project name cannot be empty")
-      }
-      if (
-        projects.some(
-          (project) => project.name.toLowerCase() === name.toLowerCase(),
-        )
-      ) {
-        return Effect.fail("A project with this name already exists")
-      }
-      return Effect.succeed(name)
-    },
-  })
-  const teams = yield* linear
-    .use((client) => client.teams())
-    .pipe(Effect.map((teamConnection) => teamConnection.nodes))
-  const teamId = yield* Prompt.autoComplete({
-    message: "Select a team for the new project",
-    choices: teams.map((team) => ({
-      title: team.name,
-      value: team.id,
-    })),
-  })
-  const created = yield* linear.use((client) =>
-    client.createProject({
-      name: projectName,
-      teamIds: [teamId],
-    }),
-  )
-  return yield* linear.use(() => created.project!)
-})
+
 const selectProject = Effect.gen(function* () {
   const linear = yield* Linear
 
@@ -625,6 +580,54 @@ const getOrSelectProject = Effect.gen(function* () {
     Effect.flatMap((projectId) => linear.use((c) => c.project(projectId))),
     Effect.catch(() => selectProject),
   )
+})
+
+type ProjectSelection =
+  | {
+      readonly _tag: "create"
+    }
+  | {
+      readonly _tag: "existing"
+      readonly project: LinearProject
+    }
+
+const createLinearProject = Effect.gen(function* () {
+  const linear = yield* Linear
+  const projects = yield* Stream.runCollect(linear.projects)
+  const projectName = yield* Prompt.text({
+    message: "Linear project name",
+    validate(input) {
+      const name = input.trim()
+      if (name.length === 0) {
+        return Effect.fail("Project name cannot be empty")
+      }
+      if (
+        projects.some(
+          (project) => project.name.toLowerCase() === name.toLowerCase(),
+        )
+      ) {
+        return Effect.fail("A project with this name already exists")
+      }
+      return Effect.succeed(name)
+    },
+  })
+  const teams = yield* linear
+    .use((client) => client.teams())
+    .pipe(Effect.map((teamConnection) => teamConnection.nodes))
+  const teamId = yield* Prompt.autoComplete({
+    message: "Select a team for the new project",
+    choices: teams.map((team) => ({
+      title: team.name,
+      value: team.id,
+    })),
+  })
+  const created = yield* linear.use((client) =>
+    client.createProject({
+      name: projectName,
+      teamIds: [teamId],
+    }),
+  )
+  return yield* linear.use(() => created.project!)
 })
 
 // Team selection
