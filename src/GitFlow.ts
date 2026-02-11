@@ -130,7 +130,8 @@ export const GitFlowCommit = Layer.effect(
    - **DO NOT** commit any of the files in the \`.lalph\` directory.`,
 
       reviewInstructions: `You are already on the branch with their changes.
-After making any changes, commit them to the same branch. Do not git push your changes or switch branches.
+After making any changes, **you have to commit them** to the same branch.
+But you **do not** need to git push your changes or switch branches.
 
  - Include \`References {task id}\` in each commit message.
  - **DO NOT** commit any of the files in the \`.lalph\` directory.
