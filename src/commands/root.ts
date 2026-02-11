@@ -142,6 +142,20 @@ const run = Effect.fnUntraced(
       () => preset,
     )
 
+    const catchStallInReview = <A, E, R>(
+      effect: Effect.Effect<A, E | RunnerStalled, R>,
+    ) =>
+      Effect.catchIf(
+        effect,
+        (u): u is RunnerStalled => u instanceof RunnerStalled,
+        Effect.fnUntraced(function* (e) {
+          const task = yield* prd.findById(taskId!)
+          const inReview = task?.state === "in-review"
+          if (inReview) return
+          return yield* e
+        }),
+      )
+
     const cancelled = yield* Effect.gen(function* () {
       //
       // 2. Work on task
@@ -164,7 +178,7 @@ const run = Effect.fnUntraced(
         stallTimeout: options.stallTimeout,
         preset: taskPreset,
         prompt: instructions,
-      }).pipe(Effect.withSpan("Main.agentWorker"))
+      }).pipe(catchStallInReview, Effect.withSpan("Main.agentWorker"))
       yield* Effect.log(`Agent exited with code: ${exitCode}`)
 
       // 3. Review task
@@ -180,7 +194,7 @@ const run = Effect.fnUntraced(
           stallTimeout: options.stallTimeout,
           preset: taskPreset,
           instructions,
-        }).pipe(Effect.withSpan("Main.agentReviewer"))
+        }).pipe(catchStallInReview, Effect.withSpan("Main.agentReviewer"))
       }
     }).pipe(
       Effect.timeout(options.runTimeout),
