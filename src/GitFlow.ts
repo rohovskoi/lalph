@@ -151,6 +151,8 @@ But you **do not** need to git push your changes or switch branches.
 
         const parsed = parseBranch(targetBranch)
         yield* worktree.exec`git fetch ${parsed.remote}`
+
+        yield* worktree.exec`git restore --worktree .`
         const rebaseResult =
           yield* worktree.exec`git rebase ${parsed.branchWithRemote}`
         if (rebaseResult !== 0) {
